@@ -510,7 +510,68 @@ $cart = WC()->cart;
             font-size: 1.2rem;
         }
     }
+
+    /* Loading Overlay */
+    .marsx-cart-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.85);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .marsx-cart-loading.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .marsx-loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f0f0f0;
+        border-top: 4px solid #f39c12;
+        border-radius: 50%;
+        animation: marsx-spin 0.8s linear infinite;
+        margin-bottom: 20px;
+    }
+
+    @keyframes marsx-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .marsx-loading-text {
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 1rem;
+        color: #666;
+        font-weight: 500;
+    }
+
+    /* Quantity button loading state */
+    .marsx-qty-control.loading {
+        pointer-events: none;
+        opacity: 0.6;
+    }
+
+    .marsx-qty-control.loading .marsx-qty-input {
+        background: #f5f5f5;
+    }
 </style>
+
+<!-- Loading Overlay -->
+<div class="marsx-cart-loading" id="marsx-cart-loading">
+    <div class="marsx-loading-spinner"></div>
+    <div class="marsx-loading-text">Updating cart...</div>
+</div>
 
 <div class="marsx-cart-wrapper">
     <div class="marsx-cart-container">
@@ -678,7 +739,7 @@ $cart = WC()->cart;
                             <span class="marsx-summary-value"><?php echo $cart->get_total(); ?></span>
                         </div>
 
-                        <a href="<?php echo esc_url(wc_get_checkout_url()); ?>" class="marsx-btn-checkout">
+                        <a href="<?php echo esc_url(home_url('/en/products/checkout/')); ?>" class="marsx-btn-checkout">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M5 12h14"></path>
                                 <path d="M12 5l7 7-7 7"></path>
@@ -711,7 +772,19 @@ $cart = WC()->cart;
 
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('marsx-cart-form');
+        const loadingOverlay = document.getElementById('marsx-cart-loading');
         if (!form) return;
+
+        // Show loading overlay
+        function showLoading() {
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('active');
+            }
+            // Disable all quantity controls
+            document.querySelectorAll('.marsx-qty-control').forEach(function(control) {
+                control.classList.add('loading');
+            });
+        }
 
         // Handle quantity buttons
         document.querySelectorAll('.marsx-qty-btn').forEach(function(btn) {
@@ -734,9 +807,10 @@ $cart = WC()->cart;
                 // Trigger change event
                 input.dispatchEvent(new Event('change', { bubbles: true }));
 
-                // Auto submit after delay
+                // Auto submit after delay with loading
                 clearTimeout(window.cartUpdateTimeout);
                 window.cartUpdateTimeout = setTimeout(function() {
+                    showLoading();
                     form.submit();
                 }, 800);
             });
@@ -747,6 +821,7 @@ $cart = WC()->cart;
             input.addEventListener('change', function() {
                 clearTimeout(window.cartUpdateTimeout);
                 window.cartUpdateTimeout = setTimeout(function() {
+                    showLoading();
                     form.submit();
                 }, 800);
             });

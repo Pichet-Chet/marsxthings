@@ -12,6 +12,329 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Helper function: ตรวจสอบว่าอยู่ในหน้าภาษาอังกฤษหรือไม่
+ */
+function marsx_is_english_page() {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    return (strpos($request_uri, '/en/') !== false || strpos($request_uri, '/en') === 0);
+}
+
+/**
+ * โหลด CSS สำหรับ shortcodes ผ่าน wp_head (โหลดทุกหน้า)
+ */
+function marsx_shortcodes_enqueue_styles() {
+    ?>
+    <style id="marsx-shortcodes-css">
+    /* MarsX User Menu Styles */
+    .marsx-user-menu,
+    .elementor-widget-container .marsx-user-menu,
+    .elementor-shortcode .marsx-user-menu {
+        position: relative !important;
+        display: inline-block !important;
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+
+    .marsx-user-menu *,
+    .marsx-user-menu *::before,
+    .marsx-user-menu *::after {
+        box-sizing: border-box !important;
+    }
+
+    .marsx-um-trigger {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 5px !important;
+        background: transparent !important;
+        cursor: pointer !important;
+        transition: all 0.2s !important;
+    }
+
+    .marsx-um-trigger:hover {
+        opacity: 0.8 !important;
+    }
+
+    .marsx-um-avatar,
+    .marsx-um-trigger img,
+    .marsx-um-trigger .avatar {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+    }
+
+    .marsx-um-info {
+        display: flex !important;
+        flex-direction: column !important;
+        line-height: 1.3 !important;
+    }
+
+    .marsx-um-name {
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        color: #1a1a1a !important;
+    }
+
+    .marsx-um-email {
+        font-size: 0.8rem !important;
+        color: #888 !important;
+        max-width: 150px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .marsx-um-fullname {
+        font-size: 0.75rem !important;
+        color: #666 !important;
+        max-width: 150px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .marsx-um-arrow {
+        color: #888 !important;
+        transition: transform 0.2s !important;
+    }
+
+    .marsx-user-menu:hover .marsx-um-arrow {
+        transform: rotate(180deg) !important;
+    }
+
+    /* Dropdown - Critical Styles */
+    .marsx-um-dropdown,
+    .elementor-widget-container .marsx-um-dropdown,
+    .elementor-shortcode .marsx-um-dropdown,
+    div.marsx-um-dropdown {
+        position: absolute !important;
+        top: calc(100% + 8px) !important;
+        right: 0 !important;
+        left: auto !important;
+        background: white !important;
+        border-radius: 16px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+        min-width: 260px !important;
+        width: auto !important;
+        max-width: 300px !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) !important;
+        transition: all 0.2s ease !important;
+        z-index: 999999 !important;
+        overflow: visible !important;
+        display: block !important;
+        flex-wrap: nowrap !important;
+        flex-direction: column !important;
+        float: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        pointer-events: none !important;
+    }
+
+    /* Bridge element to prevent gap hover issue */
+    .marsx-um-dropdown::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -12px !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 12px !important;
+        background: transparent !important;
+    }
+
+    .marsx-user-menu:hover .marsx-um-dropdown,
+    .elementor-widget-container .marsx-user-menu:hover .marsx-um-dropdown,
+    .elementor-shortcode .marsx-user-menu:hover .marsx-um-dropdown {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) !important;
+        pointer-events: auto !important;
+    }
+
+    .marsx-um-dropdown-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 20px !important;
+        background: linear-gradient(135deg, #fff9f0 0%, #fff 100%) !important;
+    }
+
+    .marsx-um-dropdown-header img {
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 50% !important;
+        border: 2px solid var(--e-global-color-primary) !important;
+    }
+
+    .marsx-um-dropdown-name {
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        color: #1a1a1a !important;
+    }
+
+    .marsx-um-dropdown-email {
+        font-size: 0.85rem !important;
+        color: #888 !important;
+    }
+
+    .marsx-um-dropdown-divider {
+        height: 1px !important;
+        background: #f0f0f0 !important;
+        width: 100% !important;
+        display: block !important;
+    }
+
+    .marsx-um-dropdown-item,
+    .marsx-um-dropdown .marsx-um-dropdown-item,
+    a.marsx-um-dropdown-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 14px 20px !important;
+        color: #333 !important;
+        text-decoration: none !important;
+        transition: all 0.2s !important;
+        font-size: 0.95rem !important;
+        width: 100% !important;
+        white-space: nowrap !important;
+        float: none !important;
+        position: relative !important;
+        background: white !important;
+    }
+
+    .marsx-um-dropdown-item:hover {
+        background: #f8f9fa !important;
+        color: var(--e-global-color-primary) !important;
+    }
+
+    .marsx-um-dropdown-item svg {
+        color: #888 !important;
+        transition: color 0.2s !important;
+        flex-shrink: 0 !important;
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .marsx-um-dropdown-item:hover svg {
+        color: var(--e-global-color-primary) !important;
+    }
+
+    .marsx-um-logout,
+    a.marsx-um-logout {
+        color: #e74c3c !important;
+    }
+
+    .marsx-um-logout:hover {
+        background: #fff5f5 !important;
+        color: #c0392b !important;
+    }
+
+    .marsx-um-logout svg {
+        color: #e74c3c !important;
+    }
+
+    /* Cart Icon Styles */
+    .marsx-cart-icon {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        text-decoration: none !important;
+        color: #333 !important;
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        transition: all 0.2s !important;
+    }
+
+    .marsx-cart-icon:hover {
+        color: #333 !important;
+    }
+
+    .marsx-cart-icon-wrapper {
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 40px !important;
+        height: 40px !important;
+        background: var(--e-global-color-primary) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.2s !important;
+    }
+
+    .marsx-cart-icon:hover .marsx-cart-icon-wrapper {
+        transform: scale(1.05) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .marsx-cart-svg {
+        color: white !important;
+        transition: transform 0.2s !important;
+    }
+
+    .marsx-cart-icon:hover .marsx-cart-svg {
+        transform: scale(1.1) !important;
+    }
+
+    .marsx-cart-count {
+        position: absolute !important;
+        top: -2px !important;
+        right: -2px !important;
+        background: white !important;
+        color: var(--e-global-color-primary) !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        min-width: 16px !important;
+        height: 16px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 3px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .marsx-cart-total {
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+    }
+
+    .marsx-cart-icon:hover .marsx-cart-total {
+        color: var(--e-global-color-primary) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .marsx-um-info {
+            display: none !important;
+        }
+
+        .marsx-um-trigger {
+            padding: 6px !important;
+            border-radius: 50% !important;
+        }
+
+        .marsx-um-arrow {
+            display: none !important;
+        }
+
+        .marsx-um-dropdown {
+            right: -10px !important;
+            min-width: 240px !important;
+        }
+
+        .marsx-cart-total {
+            display: none !important;
+        }
+    }
+    </style>
+    <?php
+}
+add_action('wp_head', 'marsx_shortcodes_enqueue_styles', 999);
+
+/**
  * Shortcode: [marsx_user_menu]
  *
  * Parameters:
@@ -52,8 +375,19 @@ function marsx_user_menu_shortcode($atts) {
         $first_name = $user->first_name;
         $last_name = $user->last_name;
         $fullname = trim($first_name . ' ' . $last_name);
-        $account_url = home_url('/my-account/');
-        $logout_url = wp_logout_url(home_url('/login/'));
+
+        // ตรวจสอบภาษาจาก URL
+        $is_english = marsx_is_english_page();
+
+        // กำหนด URL ตามภาษา
+        $account_url = $is_english ? home_url('/en/my-account/') : home_url('/my-account/');
+        $logout_url = $is_english ? wp_logout_url(home_url('/en/login/')) : wp_logout_url(home_url('/login/'));
+
+        // กำหนดข้อความตามภาษา
+        $text_my_account = $is_english ? 'My Account' : 'บัญชีของฉัน';
+        $text_orders = $is_english ? 'Orders' : 'คำสั่งซื้อ';
+        $text_settings = $is_english ? 'Settings' : 'ตั้งค่า';
+        $text_logout = $is_english ? 'Logout' : 'ออกจากระบบ';
         ?>
         <div class="marsx-user-menu">
             <div class="marsx-um-trigger">
@@ -87,7 +421,7 @@ function marsx_user_menu_shortcode($atts) {
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    บัญชีของฉัน
+                    <?php echo esc_html($text_my_account); ?>
                 </a>
                 <a href="<?php echo esc_url($account_url . '?tab=orders'); ?>" class="marsx-um-dropdown-item">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -95,14 +429,14 @@ function marsx_user_menu_shortcode($atts) {
                         <line x1="3" y1="6" x2="21" y2="6"></line>
                         <path d="M16 10a4 4 0 0 1-8 0"></path>
                     </svg>
-                    คำสั่งซื้อ
+                    <?php echo esc_html($text_orders); ?>
                 </a>
                 <a href="<?php echo esc_url($account_url . '?tab=account-details'); ?>" class="marsx-um-dropdown-item">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
-                    ตั้งค่า
+                    <?php echo esc_html($text_settings); ?>
                 </a>
                 <div class="marsx-um-dropdown-divider"></div>
                 <a href="<?php echo esc_url($logout_url); ?>" class="marsx-um-dropdown-item marsx-um-logout">
@@ -111,7 +445,7 @@ function marsx_user_menu_shortcode($atts) {
                         <polyline points="16 17 21 12 16 7"></polyline>
                         <line x1="21" y1="12" x2="9" y2="12"></line>
                     </svg>
-                    ออกจากระบบ
+                    <?php echo esc_html($text_logout); ?>
                 </a>
             </div>
         </div>
@@ -134,10 +468,19 @@ function marsx_user_menu_styles() {
     ?>
     <style>
     /* MarsX User Menu Styles */
-    .marsx-user-menu {
-        position: relative;
-        display: inline-block;
-        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    .marsx-user-menu,
+    .elementor-widget-container .marsx-user-menu,
+    .elementor-shortcode .marsx-user-menu {
+        position: relative !important;
+        display: inline-block !important;
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+
+    /* Reset Elementor flex/grid on dropdown */
+    .marsx-user-menu *,
+    .marsx-user-menu *::before,
+    .marsx-user-menu *::after {
+        box-sizing: border-box;
     }
 
     .marsx-um-trigger {
@@ -203,26 +546,65 @@ function marsx_user_menu_styles() {
     }
 
     /* Dropdown */
-    .marsx-um-dropdown {
-        position: absolute;
-        top: calc(100% + 8px);
-        right: 0;
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-        min-width: 260px;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-10px);
-        transition: all 0.2s ease;
-        z-index: 9999;
-        overflow: hidden;
+    .marsx-um-dropdown,
+    .elementor-widget-container .marsx-um-dropdown,
+    .elementor-shortcode .marsx-um-dropdown {
+        position: absolute !important;
+        top: calc(100% + 8px) !important;
+        right: 0 !important;
+        left: auto !important;
+        background: white !important;
+        border-radius: 16px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+        min-width: 260px !important;
+        width: auto !important;
+        max-width: 300px !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) !important;
+        transition: all 0.2s ease !important;
+        z-index: 99999 !important;
+        overflow: visible !important;
+        display: block !important;
+        flex-wrap: nowrap !important;
+        flex-direction: column !important;
+        float: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none !important;
     }
 
-    .marsx-user-menu:hover .marsx-um-dropdown {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
+    /* Bridge element to prevent gap hover issue */
+    .marsx-um-dropdown::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -12px !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 12px !important;
+        background: transparent !important;
+    }
+
+    .marsx-user-menu:hover .marsx-um-dropdown,
+    .elementor-widget-container .marsx-user-menu:hover .marsx-um-dropdown {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) !important;
+        pointer-events: auto !important;
+    }
+
+    .marsx-um-dropdown-item,
+    .marsx-um-dropdown .marsx-um-dropdown-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 14px 20px !important;
+        color: #333 !important;
+        text-decoration: none !important;
+        transition: all 0.2s !important;
+        font-size: 0.95rem !important;
+        width: 100% !important;
+        white-space: nowrap !important;
     }
 
     .marsx-um-dropdown-header {
@@ -256,29 +638,19 @@ function marsx_user_menu_styles() {
         background: #f0f0f0;
     }
 
-    .marsx-um-dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px 20px;
-        color: #333;
-        text-decoration: none;
-        transition: all 0.2s;
-        font-size: 0.95rem;
-    }
-
     .marsx-um-dropdown-item:hover {
-        background: #f8f9fa;
-        color: var(--e-global-color-primary);
+        background: #f8f9fa !important;
+        color: var(--e-global-color-primary) !important;
     }
 
     .marsx-um-dropdown-item svg {
-        color: #888;
-        transition: color 0.2s;
+        color: #888 !important;
+        transition: color 0.2s !important;
+        flex-shrink: 0 !important;
     }
 
     .marsx-um-dropdown-item:hover svg {
-        color: var(--e-global-color-primary);
+        color: var(--e-global-color-primary) !important;
     }
 
     .marsx-um-logout {

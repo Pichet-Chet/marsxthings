@@ -1,0 +1,683 @@
+<?php
+/**
+ * Template Name: MarsX View Order (ไทย)
+ * Description: หน้าดูรายละเอียดคำสั่งซื้อ - ภาษาไทย
+ */
+
+// Make sure WooCommerce is active
+if (!class_exists('WooCommerce')) {
+    wp_redirect(home_url('/'));
+    exit;
+}
+
+// Redirect if not logged in
+if (!is_user_logged_in()) {
+    wp_redirect(home_url('/login/'));
+    exit;
+}
+
+// Get order ID from URL
+$order_id = isset($_GET['order_id']) ? absint($_GET['order_id']) : 0;
+
+// Try to get order
+$order = false;
+if ($order_id) {
+    $order = wc_get_order($order_id);
+}
+
+// Verify order belongs to current user
+$current_user_id = get_current_user_id();
+if ($order && $order->get_customer_id() !== $current_user_id) {
+    $order = false;
+}
+
+get_header();
+?>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    /* View Order Page Styles */
+    .marsx-vieworder-wrapper {
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%);
+        min-height: 60vh;
+        padding: 40px 0 80px 0;
+        margin-top: 150px;
+    }
+
+    .marsx-vieworder-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 30px;
+    }
+
+    /* Back Link */
+    .marsx-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #666;
+        text-decoration: none;
+        font-weight: 500;
+        margin-bottom: 25px;
+        transition: color 0.2s;
+    }
+
+    .marsx-back-link:hover {
+        color: #f39c12;
+    }
+
+    .marsx-back-link svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Page Header */
+    .marsx-page-header {
+        margin-bottom: 30px;
+    }
+
+    .marsx-page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 5px;
+    }
+
+    .marsx-page-subtitle {
+        color: #666;
+        font-size: 1rem;
+    }
+
+    /* Order Card */
+    .marsx-order-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+
+    .marsx-order-header {
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        color: white;
+        padding: 25px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .marsx-order-number {
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+
+    .marsx-order-date {
+        font-size: 0.95rem;
+        opacity: 0.9;
+    }
+
+    .marsx-order-status {
+        display: inline-block;
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .marsx-order-status.completed { background: #d4edda; color: #155724; }
+    .marsx-order-status.processing { background: #fff3cd; color: #856404; }
+    .marsx-order-status.pending { background: #e2e3e5; color: #383d41; }
+    .marsx-order-status.on-hold { background: #cce5ff; color: #004085; }
+    .marsx-order-status.cancelled { background: #f8d7da; color: #721c24; }
+    .marsx-order-status.refunded { background: #d1ecf1; color: #0c5460; }
+
+    .marsx-order-body {
+        padding: 30px;
+    }
+
+    .marsx-section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f39c12;
+    }
+
+    .marsx-section-title svg {
+        color: #f39c12;
+        width: 22px;
+        height: 22px;
+    }
+
+    /* Order Items */
+    .marsx-order-items {
+        margin-bottom: 30px;
+    }
+
+    .marsx-order-item {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 15px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .marsx-order-item:last-child {
+        border-bottom: none;
+    }
+
+    .marsx-item-image {
+        width: 80px;
+        height: 80px;
+        border-radius: 12px;
+        object-fit: cover;
+        background: #f8f9fa;
+        flex-shrink: 0;
+    }
+
+    .marsx-item-details {
+        flex: 1;
+    }
+
+    .marsx-item-name {
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 5px;
+        font-size: 1.05rem;
+    }
+
+    .marsx-item-meta {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .marsx-item-sku {
+        font-size: 0.85rem;
+        color: #999;
+        margin-top: 3px;
+    }
+
+    .marsx-item-price {
+        text-align: right;
+    }
+
+    .marsx-item-unit-price {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .marsx-item-total {
+        font-weight: 600;
+        color: #f39c12;
+        font-size: 1.1rem;
+    }
+
+    /* Order Totals */
+    .marsx-order-totals {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .marsx-total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .marsx-total-row:last-child {
+        border-bottom: none;
+        padding-top: 15px;
+        margin-top: 5px;
+        border-top: 2px solid #e5e7eb;
+    }
+
+    .marsx-total-label {
+        color: #666;
+    }
+
+    .marsx-total-value {
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .marsx-total-row:last-child .marsx-total-label,
+    .marsx-total-row:last-child .marsx-total-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+    }
+
+    .marsx-total-row:last-child .marsx-total-value {
+        color: #f39c12;
+    }
+
+    /* Info Grid */
+    .marsx-info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    .marsx-info-box {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .marsx-info-box h4 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .marsx-info-box h4 svg {
+        width: 18px;
+        height: 18px;
+        color: #f39c12;
+    }
+
+    .marsx-info-box p {
+        color: #1a1a1a;
+        line-height: 1.7;
+        font-size: 0.95rem;
+    }
+
+    /* Order Notes */
+    .marsx-order-notes {
+        margin-bottom: 30px;
+    }
+
+    .marsx-note-item {
+        background: #fffbeb;
+        border-left: 4px solid #f39c12;
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .marsx-note-item p {
+        color: #1a1a1a;
+        margin-bottom: 5px;
+    }
+
+    .marsx-note-date {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    /* Action Buttons */
+    .marsx-actions {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 35px;
+    }
+
+    .marsx-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 30px;
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        border: none;
+        border-radius: 30px;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        font-family: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .marsx-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
+        color: white;
+    }
+
+    .marsx-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 30px;
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 30px;
+        color: #333;
+        font-size: 1rem;
+        font-weight: 600;
+        font-family: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .marsx-btn-secondary:hover {
+        border-color: #f39c12;
+        color: #f39c12;
+    }
+
+    /* Error State */
+    .marsx-error-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        padding: 60px 40px;
+        text-align: center;
+    }
+
+    .marsx-error-icon {
+        width: 80px;
+        height: 80px;
+        background: #fef2f2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 25px;
+    }
+
+    .marsx-error-icon svg {
+        width: 40px;
+        height: 40px;
+        color: #ef4444;
+    }
+
+    .marsx-error-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 10px;
+    }
+
+    .marsx-error-message {
+        color: #666;
+        margin-bottom: 30px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .marsx-vieworder-wrapper {
+            padding: 30px 0 60px 0;
+            margin-top: 120px;
+        }
+
+        .marsx-vieworder-container {
+            padding: 0 15px;
+        }
+
+        .marsx-page-title {
+            font-size: 1.6rem;
+        }
+
+        .marsx-order-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .marsx-order-body {
+            padding: 20px;
+        }
+
+        .marsx-info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .marsx-order-item {
+            flex-wrap: wrap;
+        }
+
+        .marsx-item-price {
+            width: 100%;
+            text-align: left;
+            margin-top: 10px;
+        }
+
+        .marsx-actions {
+            flex-direction: column;
+        }
+
+        .marsx-btn-primary,
+        .marsx-btn-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="marsx-vieworder-wrapper">
+    <div class="marsx-vieworder-container">
+        <!-- Back Link -->
+        <a href="<?php echo home_url('/my-account/?tab=orders'); ?>" class="marsx-back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            กลับไปหน้าคำสั่งซื้อ
+        </a>
+
+        <?php if ($order) : ?>
+            <!-- Page Header -->
+            <div class="marsx-page-header">
+                <h1 class="marsx-page-title">รายละเอียดคำสั่งซื้อ</h1>
+                <p class="marsx-page-subtitle">ตรวจสอบรายละเอียดและสถานะคำสั่งซื้อของคุณ</p>
+            </div>
+
+            <!-- Order Card -->
+            <div class="marsx-order-card">
+                <div class="marsx-order-header">
+                    <div>
+                        <div class="marsx-order-number">คำสั่งซื้อ #<?php echo $order->get_order_number(); ?></div>
+                        <div class="marsx-order-date">วันที่สั่งซื้อ: <?php echo date('d/m/Y H:i', strtotime($order->get_date_created())); ?></div>
+                    </div>
+                    <?php
+                    $status = $order->get_status();
+                    $status_labels = array(
+                        'completed' => 'เสร็จสิ้น',
+                        'processing' => 'กำลังดำเนินการ',
+                        'pending' => 'รอดำเนินการ',
+                        'on-hold' => 'รอการชำระเงิน',
+                        'cancelled' => 'ยกเลิก',
+                        'refunded' => 'คืนเงินแล้ว'
+                    );
+                    ?>
+                    <span class="marsx-order-status <?php echo esc_attr($status); ?>"><?php echo isset($status_labels[$status]) ? $status_labels[$status] : $status; ?></span>
+                </div>
+
+                <div class="marsx-order-body">
+                    <!-- Order Items -->
+                    <div class="marsx-order-items">
+                        <h3 class="marsx-section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                            รายการสินค้า
+                        </h3>
+                        <?php foreach ($order->get_items() as $item_id => $item) :
+                            $product = $item->get_product();
+                            $image_url = $product ? wp_get_attachment_image_url($product->get_image_id(), 'thumbnail') : '';
+                            $sku = $product ? $product->get_sku() : '';
+                        ?>
+                            <div class="marsx-order-item">
+                                <?php if ($image_url) : ?>
+                                    <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($item->get_name()); ?>" class="marsx-item-image">
+                                <?php else : ?>
+                                    <div class="marsx-item-image" style="display: flex; align-items: center; justify-content: center;">
+                                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="marsx-item-details">
+                                    <div class="marsx-item-name"><?php echo esc_html($item->get_name()); ?></div>
+                                    <div class="marsx-item-meta">จำนวน: <?php echo $item->get_quantity(); ?> ชิ้น</div>
+                                    <?php if ($sku) : ?>
+                                        <div class="marsx-item-sku">SKU: <?php echo esc_html($sku); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="marsx-item-price">
+                                    <div class="marsx-item-unit-price">฿<?php echo number_format($item->get_total() / $item->get_quantity(), 0); ?> x <?php echo $item->get_quantity(); ?></div>
+                                    <div class="marsx-item-total">฿<?php echo number_format($item->get_total(), 0); ?></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- Order Totals -->
+                    <div class="marsx-order-totals">
+                        <div class="marsx-total-row">
+                            <span class="marsx-total-label">ยอดรวมสินค้า</span>
+                            <span class="marsx-total-value">฿<?php echo number_format($order->get_subtotal(), 0); ?></span>
+                        </div>
+                        <?php if ($order->get_shipping_total() > 0) : ?>
+                        <div class="marsx-total-row">
+                            <span class="marsx-total-label">ค่าจัดส่ง (<?php echo esc_html($order->get_shipping_method()); ?>)</span>
+                            <span class="marsx-total-value">฿<?php echo number_format($order->get_shipping_total(), 0); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($order->get_total_discount() > 0) : ?>
+                        <div class="marsx-total-row">
+                            <span class="marsx-total-label">ส่วนลด</span>
+                            <span class="marsx-total-value" style="color: #10b981;">-฿<?php echo number_format($order->get_total_discount(), 0); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($order->get_total_tax() > 0) : ?>
+                        <div class="marsx-total-row">
+                            <span class="marsx-total-label">ภาษี</span>
+                            <span class="marsx-total-value">฿<?php echo number_format($order->get_total_tax(), 0); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <div class="marsx-total-row">
+                            <span class="marsx-total-label">ยอดรวมทั้งสิ้น</span>
+                            <span class="marsx-total-value">฿<?php echo number_format($order->get_total(), 0); ?></span>
+                        </div>
+                    </div>
+
+                    <!-- Info Grid -->
+                    <div class="marsx-info-grid">
+                        <div class="marsx-info-box">
+                            <h4>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                                ที่อยู่เรียกเก็บเงิน
+                            </h4>
+                            <p>
+                                <?php echo esc_html($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()); ?><br>
+                                <?php echo esc_html($order->get_billing_address_1()); ?>
+                                <?php if ($order->get_billing_address_2()) echo '<br>' . esc_html($order->get_billing_address_2()); ?><br>
+                                <?php echo esc_html($order->get_billing_city() . ' ' . $order->get_billing_postcode()); ?>
+                                <?php if ($order->get_billing_phone()) : ?><br>โทร: <?php echo esc_html($order->get_billing_phone()); ?><?php endif; ?>
+                                <?php if ($order->get_billing_email()) : ?><br>อีเมล: <?php echo esc_html($order->get_billing_email()); ?><?php endif; ?>
+                            </p>
+                        </div>
+                        <div class="marsx-info-box">
+                            <h4>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                ที่อยู่จัดส่ง
+                            </h4>
+                            <p>
+                                <?php
+                                if ($order->get_shipping_address_1()) {
+                                    echo esc_html($order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name()) . '<br>';
+                                    echo esc_html($order->get_shipping_address_1());
+                                    if ($order->get_shipping_address_2()) echo '<br>' . esc_html($order->get_shipping_address_2());
+                                    echo '<br>' . esc_html($order->get_shipping_city() . ' ' . $order->get_shipping_postcode());
+                                } else {
+                                    echo 'เหมือนที่อยู่เรียกเก็บเงิน';
+                                }
+                                ?>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="marsx-info-grid">
+                        <div class="marsx-info-box">
+                            <h4>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                                ช่องทางการชำระเงิน
+                            </h4>
+                            <p><?php echo esc_html($order->get_payment_method_title()); ?></p>
+                        </div>
+                        <?php if ($order->get_shipping_method()) : ?>
+                        <div class="marsx-info-box">
+                            <h4>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                วิธีการจัดส่ง
+                            </h4>
+                            <p><?php echo esc_html($order->get_shipping_method()); ?></p>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php
+                    // Get order notes
+                    $order_notes = wc_get_order_notes(array(
+                        'order_id' => $order->get_id(),
+                        'type' => 'customer'
+                    ));
+                    if ($order_notes) :
+                    ?>
+                    <div class="marsx-order-notes">
+                        <h3 class="marsx-section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            หมายเหตุคำสั่งซื้อ
+                        </h3>
+                        <?php foreach ($order_notes as $note) : ?>
+                            <div class="marsx-note-item">
+                                <p><?php echo wp_kses_post($note->content); ?></p>
+                                <span class="marsx-note-date"><?php echo date('d/m/Y H:i', strtotime($note->date_created)); ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Actions -->
+                    <div class="marsx-actions">
+                        <a href="<?php echo home_url('/my-account/?tab=orders'); ?>" class="marsx-btn-secondary">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            กลับไปหน้าคำสั่งซื้อ
+                        </a>
+                        <a href="<?php echo home_url('/products/'); ?>" class="marsx-btn-primary">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                            เลือกซื้อสินค้าต่อ
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        <?php else : ?>
+            <!-- Error State -->
+            <div class="marsx-error-card">
+                <div class="marsx-error-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h2 class="marsx-error-title">ไม่พบข้อมูลคำสั่งซื้อ</h2>
+                <p class="marsx-error-message">ไม่สามารถเข้าถึงข้อมูลคำสั่งซื้อนี้ได้ กรุณาตรวจสอบว่าคุณเข้าสู่ระบบด้วยบัญชีที่ถูกต้อง</p>
+                <div class="marsx-actions">
+                    <a href="<?php echo home_url('/my-account/?tab=orders'); ?>" class="marsx-btn-primary">ดูคำสั่งซื้อทั้งหมด</a>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php get_footer(); ?>
