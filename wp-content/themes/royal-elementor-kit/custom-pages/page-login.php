@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
         if (is_wp_error($user)) {
             $login_error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
         } else {
-            wp_redirect(home_url('/'));
+            wp_redirect(home_url('/my-account/'));
             exit;
         }
     }

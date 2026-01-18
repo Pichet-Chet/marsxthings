@@ -97,11 +97,18 @@ get_header();
 ?>
 
 <style>
-    .marsx-account-wrapper { font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f9fa; min-height: 60vh; padding: 40px 0; }
-    .marsx-account-container { max-width: 1200px; margin: 0 auto; padding: 0 30px; display: flex; gap: 40px; }
+    /* Reset and spacing for Elementor header */
+    .marsx-account-wrapper {
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f8f9fa;
+        min-height: 50vh;
+        padding: 40px 0 60px 0;
+        margin-top: 150px;
+    }
+    .marsx-account-container { max-width: 1200px; margin: 0 auto; padding: 0 30px; display: flex; gap: 40px; align-items: flex-start; }
 
     /* Sidebar */
-    .marsx-account-sidebar { flex: 0 0 280px; }
+    .marsx-account-sidebar { flex: 0 0 280px; position: sticky; top: 120px; }
     .marsx-sidebar-menu { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
     .marsx-sidebar-menu a { display: flex; align-items: center; gap: 15px; padding: 18px 25px; color: #333; text-decoration: none; font-weight: 500; transition: all 0.3s; border-left: 4px solid transparent; }
     .marsx-sidebar-menu a:hover { background: #fff9f0; color: #f39c12; }
@@ -256,7 +263,7 @@ get_header();
                     </div>
 
                     <div class="marsx-back-to-shop">
-                        <a href="<?php echo home_url('/shop/'); ?>">
+                        <a href="<?php echo home_url('/products/'); ?>">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                             กลับไปหน้าร้านค้า
                         </a>
