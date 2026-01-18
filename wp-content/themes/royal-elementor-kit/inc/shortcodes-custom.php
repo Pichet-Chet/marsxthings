@@ -116,18 +116,8 @@ function marsx_user_menu_shortcode($atts) {
             </div>
         </div>
         <?php
-    } else {
-        // ไม่ได้ login - แสดงปุ่ม login
-        ?>
-        <a href="<?php echo esc_url(home_url($atts['login_url'])); ?>" class="marsx-um-login-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <?php echo esc_html($atts['login_text']); ?>
-        </a>
-        <?php
     }
+    // ไม่แสดงอะไรถ้าไม่ได้ login
 
     return ob_get_clean();
 }
@@ -247,7 +237,7 @@ function marsx_user_menu_styles() {
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        border: 2px solid #f39c12;
+        border: 2px solid var(--e-global-color-primary);
     }
 
     .marsx-um-dropdown-name {
@@ -279,7 +269,7 @@ function marsx_user_menu_styles() {
 
     .marsx-um-dropdown-item:hover {
         background: #f8f9fa;
-        color: #f39c12;
+        color: var(--e-global-color-primary);
     }
 
     .marsx-um-dropdown-item svg {
@@ -288,7 +278,7 @@ function marsx_user_menu_styles() {
     }
 
     .marsx-um-dropdown-item:hover svg {
-        color: #f39c12;
+        color: var(--e-global-color-primary);
     }
 
     .marsx-um-logout {
@@ -306,23 +296,21 @@ function marsx_user_menu_styles() {
 
     /* Login Button (เมื่อไม่ได้ login) */
     .marsx-um-login-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        display: inline-block;
+        padding: 10px 28px;
+        background: var(--e-global-color-primary);
         color: white;
         text-decoration: none;
-        border-radius: 50px;
-        font-weight: 600;
-        font-size: 0.9rem;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.95rem;
         transition: all 0.2s;
         font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     .marsx-um-login-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
+        background: var(--e-global-color-primary);
+        filter: brightness(0.9);
         color: white;
     }
 
@@ -391,9 +379,12 @@ function marsx_cart_icon_shortcode($atts) {
     <a href="<?php echo esc_url($cart_url); ?>" class="marsx-cart-icon">
         <div class="marsx-cart-icon-wrapper">
             <svg class="marsx-cart-svg" width="<?php echo $icon_size; ?>" height="<?php echo $icon_size; ?>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="9" cy="21" r="1"></circle>
-                <circle cx="20" cy="21" r="1"></circle>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                <path d="M6 6h15l-1.5 9h-12z"></path>
+                <circle cx="9" cy="20" r="1.5"></circle>
+                <circle cx="17" cy="20" r="1.5"></circle>
+                <path d="M3 3l2.5 2.5"></path>
+                <path d="M5.5 5.5L6 6"></path>
+                <path d="M1 1l3 3" stroke-width="2.5"></path>
             </svg>
             <?php if ($atts['show_count'] === 'yes' && $cart_count > 0) : ?>
                 <span class="marsx-cart-count"><?php echo $cart_count; ?></span>
@@ -431,7 +422,7 @@ function marsx_cart_icon_styles() {
     }
 
     .marsx-cart-icon:hover {
-        color: #f39c12;
+        color: #333;
     }
 
     .marsx-cart-icon-wrapper {
@@ -439,9 +430,21 @@ function marsx_cart_icon_styles() {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: var(--e-global-color-primary);
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+    }
+
+    .marsx-cart-icon:hover .marsx-cart-icon-wrapper {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
     .marsx-cart-svg {
+        color: white;
         transition: transform 0.2s;
     }
 
@@ -451,20 +454,20 @@ function marsx_cart_icon_styles() {
 
     .marsx-cart-count {
         position: absolute;
-        top: -8px;
-        right: -8px;
-        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
-        color: white;
-        font-size: 11px;
+        top: -2px;
+        right: -2px;
+        background: white;
+        color: var(--e-global-color-primary);
+        font-size: 10px;
         font-weight: 700;
-        min-width: 18px;
-        height: 18px;
+        min-width: 16px;
+        height: 16px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 4px;
-        box-shadow: 0 2px 6px rgba(243, 156, 18, 0.4);
+        padding: 0 3px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
     .marsx-cart-total {
@@ -474,7 +477,7 @@ function marsx_cart_icon_styles() {
     }
 
     .marsx-cart-icon:hover .marsx-cart-total {
-        color: #f39c12;
+        color: var(--e-global-color-primary);
     }
 
     /* Responsive */
