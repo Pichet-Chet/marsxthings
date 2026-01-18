@@ -577,10 +577,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var form = this.closest('form');
             var saveBtn = form.querySelector('.marsx-btn-save-avatar');
             var filename = form.querySelector('.marsx-avatar-filename');
+            var previewImg = document.querySelector('.marsx-avatar-preview img');
 
             if (this.files && this.files[0]) {
                 saveBtn.style.display = 'inline-block';
                 filename.textContent = this.files[0].name;
+
+                // Preview image
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                };
+                reader.readAsDataURL(this.files[0]);
             } else {
                 saveBtn.style.display = 'none';
                 filename.textContent = '';

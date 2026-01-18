@@ -17,6 +17,7 @@ if (!defined('ABSPATH')) {
  * Parameters:
  * - show_email: yes/no (default: yes)
  * - show_name: yes/no (default: no)
+ * - show_fullname: yes/no (default: yes) - แสดงชื่อ-นามสกุลใต้ email
  * - avatar_size: ขนาด avatar (default: 40)
  * - login_url: URL หน้า login (default: /login/)
  * - login_text: ข้อความปุ่ม login (default: เข้าสู่ระบบ)
@@ -29,11 +30,12 @@ if (!defined('ABSPATH')) {
 function marsx_user_menu_shortcode($atts) {
     // Default attributes
     $atts = shortcode_atts(array(
-        'show_email'  => 'yes',
-        'show_name'   => 'no',
-        'avatar_size' => 40,
-        'login_url'   => '/login/',
-        'login_text'  => 'เข้าสู่ระบบ',
+        'show_email'    => 'yes',
+        'show_name'     => 'no',
+        'show_fullname' => 'yes',
+        'avatar_size'   => 40,
+        'login_url'     => '/login/',
+        'login_text'    => 'เข้าสู่ระบบ',
     ), $atts, 'marsx_user_menu');
 
     // Start output buffering
@@ -47,6 +49,9 @@ function marsx_user_menu_shortcode($atts) {
         $avatar = get_avatar($user->ID, $atts['avatar_size'], '', $user->display_name, array('class' => 'marsx-um-avatar'));
         $email = $user->user_email;
         $name = $user->display_name;
+        $first_name = $user->first_name;
+        $last_name = $user->last_name;
+        $fullname = trim($first_name . ' ' . $last_name);
         $account_url = home_url('/my-account/');
         $logout_url = wp_logout_url(home_url('/login/'));
         ?>
@@ -59,6 +64,9 @@ function marsx_user_menu_shortcode($atts) {
                     <?php endif; ?>
                     <?php if ($atts['show_email'] === 'yes') : ?>
                         <span class="marsx-um-email"><?php echo esc_html($email); ?></span>
+                    <?php endif; ?>
+                    <?php if ($atts['show_fullname'] === 'yes' && !empty($fullname)) : ?>
+                        <span class="marsx-um-fullname"><?php echo esc_html($fullname); ?></span>
                     <?php endif; ?>
                 </div>
                 <svg class="marsx-um-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -180,6 +188,15 @@ function marsx_user_menu_styles() {
     .marsx-um-email {
         font-size: 0.8rem;
         color: #888;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .marsx-um-fullname {
+        font-size: 0.75rem;
+        color: #666;
         max-width: 150px;
         overflow: hidden;
         text-overflow: ellipsis;
