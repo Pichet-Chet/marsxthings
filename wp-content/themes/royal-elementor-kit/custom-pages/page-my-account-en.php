@@ -24,6 +24,70 @@ if ($current_tab === 'logout') {
 $update_message = '';
 $update_type = '';
 
+// Handle avatar upload
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_update_avatar'])) {
+    if (!isset($_POST['marsx_avatar_nonce']) || !wp_verify_nonce($_POST['marsx_avatar_nonce'], 'marsx_avatar_action')) {
+        $update_message = 'Security check failed. Please try again.';
+        $update_type = 'error';
+    } else {
+        if (!empty($_FILES['avatar']['name'])) {
+            // Check file type
+            $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
+            $file_type = wp_check_filetype($_FILES['avatar']['name']);
+
+            if (in_array($_FILES['avatar']['type'], $allowed_types)) {
+                require_once(ABSPATH . 'wp-admin/includes/image.php');
+                require_once(ABSPATH . 'wp-admin/includes/file.php');
+                require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+                // Upload the file
+                $attachment_id = media_handle_upload('avatar', 0);
+
+                if (!is_wp_error($attachment_id)) {
+                    // Get all image sizes for Simple Local Avatars
+                    $full_url = wp_get_attachment_url($attachment_id);
+                    $upload_dir = wp_upload_dir();
+                    $file_path = get_attached_file($attachment_id);
+
+                    // Build avatar data array for Simple Local Avatars
+                    $avatar_data = array(
+                        'media_id' => $attachment_id,
+                        'full' => $full_url,
+                    );
+
+                    // Get thumbnail sizes
+                    $metadata = wp_get_attachment_metadata($attachment_id);
+                    if ($metadata && isset($metadata['sizes'])) {
+                        $base_url = trailingslashit(dirname($full_url));
+                        foreach ($metadata['sizes'] as $size => $size_data) {
+                            $avatar_data[$size_data['width']] = $base_url . $size_data['file'];
+                        }
+                    }
+
+                    // Save for Simple Local Avatars plugin
+                    update_user_meta($current_user->ID, 'simple_local_avatar', $avatar_data);
+                    update_user_meta($current_user->ID, 'simple_local_avatar_rating', 'G');
+
+                    // Also save as custom meta for fallback
+                    update_user_meta($current_user->ID, 'marsx_avatar', $attachment_id);
+
+                    $update_message = 'Profile picture updated successfully.';
+                    $update_type = 'success';
+
+                    // Refresh user data
+                    $current_user = wp_get_current_user();
+                } else {
+                    $update_message = 'Upload error: ' . $attachment_id->get_error_message();
+                    $update_type = 'error';
+                }
+            } else {
+                $update_message = 'Only image files are allowed (JPG, PNG, GIF, WebP).';
+                $update_type = 'error';
+            }
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_update_account'])) {
     if (!isset($_POST['marsx_account_nonce']) || !wp_verify_nonce($_POST['marsx_account_nonce'], 'marsx_account_action')) {
         $update_message = 'Security check failed. Please try again.';
@@ -170,6 +234,18 @@ get_header();
     .marsx-message { padding: 14px 18px; border-radius: 10px; margin-bottom: 25px; font-size: 0.9rem; }
     .marsx-message.error { background: #fff5f5; border: 1px solid #fed7d7; color: #c53030; }
     .marsx-message.success { background: #f0fff4; border: 1px solid #c6f6d5; color: #276749; }
+
+    /* Avatar Section */
+    .marsx-avatar-section { display: flex; align-items: center; gap: 25px; padding: 25px; background: linear-gradient(135deg, #fff9f0 0%, #fff 100%); border-radius: 12px; margin-bottom: 30px; border: 1px solid #ffecd2; }
+    .marsx-avatar-preview img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #f39c12; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3); }
+    .marsx-avatar-info h4 { font-size: 1.1rem; color: #1a1a1a; margin-bottom: 5px; }
+    .marsx-avatar-info p { color: #666; font-size: 0.85rem; margin-bottom: 15px; }
+    .marsx-avatar-form { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .marsx-btn-upload { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; background: white; border: 2px solid #f39c12; border-radius: 25px; color: #f39c12; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+    .marsx-btn-upload:hover { background: #f39c12; color: white; }
+    .marsx-btn-save-avatar { padding: 10px 18px; background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%); border: none; border-radius: 25px; color: white; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .marsx-btn-save-avatar:hover { box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4); }
+    .marsx-avatar-filename { font-size: 0.85rem; color: #666; }
 
     /* Back to Shop */
     .marsx-back-to-shop { margin-top: 25px; }
@@ -433,6 +509,27 @@ get_header();
                     <h2 class="marsx-content-title">Account Details</h2>
                     <p class="marsx-content-subtitle">Edit your personal information and password</p>
 
+                    <!-- Avatar Upload Section -->
+                    <div class="marsx-avatar-section">
+                        <div class="marsx-avatar-preview">
+                            <?php echo get_avatar($current_user->ID, 120); ?>
+                        </div>
+                        <div class="marsx-avatar-info">
+                            <h4>Profile Picture</h4>
+                            <p>Upload a new image (JPG, PNG, GIF, WebP)</p>
+                            <form method="post" action="" enctype="multipart/form-data" class="marsx-avatar-form">
+                                <?php wp_nonce_field('marsx_avatar_action', 'marsx_avatar_nonce'); ?>
+                                <input type="file" name="avatar" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+                                <label for="avatar-input" class="marsx-btn-upload">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    Choose File
+                                </label>
+                                <button type="submit" name="marsx_update_avatar" class="marsx-btn-save-avatar" style="display:none;">Save</button>
+                                <span class="marsx-avatar-filename"></span>
+                            </form>
+                        </div>
+                    </div>
+
                     <form method="post" action="">
                         <?php wp_nonce_field('marsx_account_action', 'marsx_account_nonce'); ?>
                         <div class="marsx-form-row">
@@ -471,5 +568,26 @@ get_header();
         </main>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var avatarInput = document.getElementById('avatar-input');
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            var form = this.closest('form');
+            var saveBtn = form.querySelector('.marsx-btn-save-avatar');
+            var filename = form.querySelector('.marsx-avatar-filename');
+
+            if (this.files && this.files[0]) {
+                saveBtn.style.display = 'inline-block';
+                filename.textContent = this.files[0].name;
+            } else {
+                saveBtn.style.display = 'none';
+                filename.textContent = '';
+            }
+        });
+    }
+});
+</script>
 
 <?php get_footer(); ?>

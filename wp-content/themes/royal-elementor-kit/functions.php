@@ -128,3 +128,8 @@ add_filter('wp_unique_filename', 'custom_unique_filename_short', 10, 3);
 
 add_filter('xmlrpc_enabled', '__return_false');
 
+/*
+** MarsX Custom Shortcodes
+*/
+require_once get_parent_theme_file_path( '/inc/shortcodes-custom.php' );
+
