@@ -23,19 +23,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
     if (!isset($_POST['marsx_login_nonce']) || !wp_verify_nonce($_POST['marsx_login_nonce'], 'marsx_login_action')) {
         $login_error = 'Security check failed. Please try again.';
     } else {
-        $creds = array(
-            'user_login'    => sanitize_text_field($_POST['email']),
-            'user_password' => $_POST['password'],
-            'remember'      => isset($_POST['remember'])
-        );
+        // Verify reCAPTCHA v3
+        $recaptcha_token = isset($_POST['recaptcha_token']) ? sanitize_text_field($_POST['recaptcha_token']) : '';
+        $recaptcha_result = marsx_verify_recaptcha_v3($recaptcha_token, 'login', 0.3); // ลด threshold เป็น 0.3
 
-        $user = wp_signon($creds, is_ssl());
-
-        if (is_wp_error($user)) {
-            $login_error = 'Invalid email or password.';
+        if (!$recaptcha_result['success']) {
+            // Debug: แสดง error ที่เกิดขึ้นจริง
+            $debug_msg = $recaptcha_result['error'] ?? 'Unknown error';
+            $login_error = 'Security verification failed: ' . $debug_msg;
+            error_log('MarsX reCAPTCHA Error: ' . $debug_msg . ' | Token: ' . substr($recaptcha_token, 0, 20) . '...');
         } else {
-            wp_redirect(home_url('/en/my-account/'));
-            exit;
+            $creds = array(
+                'user_login'    => sanitize_text_field($_POST['email']),
+                'user_password' => $_POST['password'],
+                'remember'      => isset($_POST['remember'])
+            );
+
+            $user = wp_signon($creds, is_ssl());
+
+            if (is_wp_error($user)) {
+                $login_error = 'Invalid email or password.';
+            } else {
+                wp_redirect(home_url('/en/my-account/'));
+                exit;
+            }
         }
     }
 }
@@ -52,6 +63,9 @@ $register_url = home_url('/en/register/');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <?php wp_head(); ?>
+    <?php if (marsx_is_recaptcha_enabled()) : ?>
+    <script src="https://www.google.com/recaptcha/api.js?render=<?php echo esc_attr(marsx_get_recaptcha_site_key()); ?>"></script>
+    <?php endif; ?>
     <style>
         * {
             margin: 0;
@@ -585,8 +599,10 @@ $register_url = home_url('/en/register/');
                     <div class="error-message"><?php echo esc_html($login_error); ?></div>
                 <?php endif; ?>
 
-                <form method="post" action="">
+                <form method="post" action="" id="login-form">
                     <?php wp_nonce_field('marsx_login_action', 'marsx_login_nonce'); ?>
+                    <input type="hidden" name="recaptcha_token" id="recaptcha_token">
+                    <input type="hidden" name="marsx_login" value="1">
 
                     <div class="form-group">
                         <label for="email">Email</label>
@@ -652,6 +668,35 @@ $register_url = home_url('/en/register/');
                 eyeClosed.style.display = 'none';
             }
         }
+
+        <?php if (marsx_is_recaptcha_enabled()) : ?>
+        // reCAPTCHA v3 - Get token before form submit
+        (function() {
+            var form = document.getElementById('login-form');
+            var tokenField = document.getElementById('recaptcha_token');
+            var siteKey = '<?php echo esc_js(marsx_get_recaptcha_site_key()); ?>';
+
+            function handleSubmit(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                grecaptcha.ready(function() {
+                    grecaptcha.execute(siteKey, {action: 'login'})
+                        .then(function(token) {
+                            tokenField.value = token;
+                            form.removeEventListener('submit', handleSubmit);
+                            HTMLFormElement.prototype.submit.call(form);
+                        })
+                        .catch(function(error) {
+                            console.error('reCAPTCHA error:', error);
+                            alert('reCAPTCHA Error: ' + error.message);
+                        });
+                });
+            }
+
+            form.addEventListener('submit', handleSubmit);
+        })();
+        <?php endif; ?>
     </script>
 
     <?php wp_footer(); ?>

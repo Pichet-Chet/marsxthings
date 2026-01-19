@@ -19,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_register'])) {
     if (!isset($_POST['marsx_register_nonce']) || !wp_verify_nonce($_POST['marsx_register_nonce'], 'marsx_register_action')) {
         $register_error = 'Security check failed. Please try again.';
     } else {
+        // Verify reCAPTCHA v3
+        $recaptcha_token = isset($_POST['recaptcha_token']) ? sanitize_text_field($_POST['recaptcha_token']) : '';
+        $recaptcha_result = marsx_verify_recaptcha_v3($recaptcha_token, 'register', 0.5);
+
+        if (!$recaptcha_result['success']) {
+            $register_error = 'Security verification failed. Please try again.';
+        } else {
         $first_name = sanitize_text_field($_POST['first_name']);
         $last_name = sanitize_text_field($_POST['last_name']);
         $email = sanitize_email($_POST['email']);
@@ -82,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_register'])) {
                 exit;
             }
         }
+        }
     }
 }
 
@@ -97,6 +105,9 @@ $login_url = home_url('/en/login/');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
     <?php wp_head(); ?>
+    <?php if (marsx_is_recaptcha_enabled()) : ?>
+    <script src="https://www.google.com/recaptcha/api.js?render=<?php echo esc_attr(marsx_get_recaptcha_site_key()); ?>"></script>
+    <?php endif; ?>
     <style>
         * {
             margin: 0;
@@ -689,6 +700,8 @@ $login_url = home_url('/en/login/');
 
                 <form method="post" action="" id="register-form">
                     <?php wp_nonce_field('marsx_register_action', 'marsx_register_nonce'); ?>
+                    <input type="hidden" name="recaptcha_token" id="recaptcha_token">
+                    <input type="hidden" name="marsx_register" value="1">
 
                     <div class="form-row">
                         <div class="form-group">
@@ -849,6 +862,35 @@ $login_url = home_url('/en/login/');
             checkRequirement(reqNumbers, /[0-9]/.test(password));
             checkRequirement(reqSymbols, /[!@#$%^&*]/.test(password));
         });
+
+        <?php if (marsx_is_recaptcha_enabled()) : ?>
+        // reCAPTCHA v3 - Get token before form submit
+        (function() {
+            var form = document.getElementById('register-form');
+            var tokenField = document.getElementById('recaptcha_token');
+            var siteKey = '<?php echo esc_js(marsx_get_recaptcha_site_key()); ?>';
+
+            function handleSubmit(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                grecaptcha.ready(function() {
+                    grecaptcha.execute(siteKey, {action: 'register'})
+                        .then(function(token) {
+                            tokenField.value = token;
+                            form.removeEventListener('submit', handleSubmit);
+                            HTMLFormElement.prototype.submit.call(form);
+                        })
+                        .catch(function(error) {
+                            console.error('reCAPTCHA error:', error);
+                            alert('reCAPTCHA Error: ' + error.message);
+                        });
+                });
+            }
+
+            form.addEventListener('submit', handleSubmit);
+        })();
+        <?php endif; ?>
     </script>
 
     <?php wp_footer(); ?>

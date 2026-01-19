@@ -28,6 +28,10 @@ get_header();
 $checkout = WC()->checkout();
 ?>
 
+<?php if (marsx_is_recaptcha_enabled()) : ?>
+<script src="https://www.google.com/recaptcha/api.js?render=<?php echo esc_attr(marsx_get_recaptcha_site_key()); ?>"></script>
+<?php endif; ?>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1014,6 +1018,47 @@ $checkout = WC()->checkout();
         </form>
     </div>
 </div>
+
+<?php if (marsx_is_recaptcha_enabled()) : ?>
+<!-- reCAPTCHA v3 Hidden Field -->
+<script>
+(function($) {
+    $(document).ready(function() {
+        // Add hidden input for reCAPTCHA token
+        $('form.checkout').prepend('<input type="hidden" name="recaptcha_token" id="recaptcha_token">');
+
+        // Refresh token function
+        function refreshRecaptchaToken() {
+            if (typeof grecaptcha !== 'undefined') {
+                grecaptcha.ready(function() {
+                    grecaptcha.execute('<?php echo esc_js(marsx_get_recaptcha_site_key()); ?>', {action: 'checkout'}).then(function(token) {
+                        $('#recaptcha_token').val(token);
+                        console.log('reCAPTCHA token refreshed');
+                    });
+                });
+            }
+        }
+
+        // Initial token - get immediately
+        refreshRecaptchaToken();
+
+        // Refresh every 90 seconds (tokens expire after 2 minutes)
+        setInterval(refreshRecaptchaToken, 90000);
+
+        // Also refresh token right before submit
+        $('form.checkout').on('checkout_place_order', function() {
+            // Token is already set, just return true
+            // If token is empty, get a new one synchronously won't work
+            // So we rely on the periodic refresh
+            if (!$('#recaptcha_token').val()) {
+                console.log('Warning: reCAPTCHA token is empty');
+            }
+            return true;
+        });
+    });
+})(jQuery);
+</script>
+<?php endif; ?>
 
 <!-- Validation Loading Overlay -->
 <div class="marsx-validation-loading" id="marsx-validation-loading">

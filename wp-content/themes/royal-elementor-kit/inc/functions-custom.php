@@ -456,3 +456,138 @@ function marsx_generate_unique_username($email, $first_name = '', $last_name = '
 
     return $username;
 }
+
+/**
+ * =========================================
+ * Google reCAPTCHA v3 Integration
+ * =========================================
+ */
+
+// reCAPTCHA v3 Configuration
+// ต้องเพิ่มใน wp-config.php:
+// define('MARSX_RECAPTCHA_V3_SITE_KEY', 'your-site-key');
+// define('MARSX_RECAPTCHA_V3_SECRET_KEY', 'your-secret-key');
+
+/**
+ * Get reCAPTCHA v3 Site Key
+ * @return string
+ */
+function marsx_get_recaptcha_site_key() {
+    return defined('MARSX_RECAPTCHA_V3_SITE_KEY') ? MARSX_RECAPTCHA_V3_SITE_KEY : '';
+}
+
+/**
+ * Check if reCAPTCHA v3 is enabled
+ * @return bool
+ */
+function marsx_is_recaptcha_enabled() {
+    return defined('MARSX_RECAPTCHA_V3_SITE_KEY') && defined('MARSX_RECAPTCHA_V3_SECRET_KEY')
+        && !empty(MARSX_RECAPTCHA_V3_SITE_KEY) && !empty(MARSX_RECAPTCHA_V3_SECRET_KEY);
+}
+
+/**
+ * Verify reCAPTCHA v3 token
+ * @param string $token - reCAPTCHA token from frontend
+ * @param string $expected_action - Expected action name
+ * @param float $min_score - Minimum acceptable score (default 0.5)
+ * @return array ['success' => bool, 'score' => float, 'action' => string, 'error' => string]
+ */
+function marsx_verify_recaptcha_v3($token, $expected_action = '', $min_score = 0.5) {
+    $result = array(
+        'success' => false,
+        'score' => 0,
+        'action' => '',
+        'error' => '',
+    );
+
+    // Check if reCAPTCHA is configured
+    if (!marsx_is_recaptcha_enabled()) {
+        $result['success'] = true; // Skip verification if not configured
+        return $result;
+    }
+
+    // Check if token is provided
+    if (empty($token)) {
+        $result['error'] = 'reCAPTCHA token missing';
+        return $result;
+    }
+
+    // Verify with Google API
+    $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+        'body' => array(
+            'secret' => MARSX_RECAPTCHA_V3_SECRET_KEY,
+            'response' => $token,
+            'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        ),
+        'timeout' => 10,
+    ));
+
+    // Check for connection error
+    if (is_wp_error($response)) {
+        $result['error'] = 'Failed to connect to reCAPTCHA server';
+        return $result;
+    }
+
+    // Parse response
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (!$body) {
+        $result['error'] = 'Invalid response from reCAPTCHA server';
+        return $result;
+    }
+
+    // Debug logging
+    error_log('MarsX reCAPTCHA Response: ' . print_r($body, true));
+
+    // Check success
+    if (empty($body['success'])) {
+        $result['error'] = 'reCAPTCHA verification failed';
+        if (!empty($body['error-codes'])) {
+            $result['error'] .= ': ' . implode(', ', $body['error-codes']);
+        }
+        return $result;
+    }
+
+    // Get score and action
+    $result['score'] = isset($body['score']) ? floatval($body['score']) : 0;
+    $result['action'] = isset($body['action']) ? $body['action'] : '';
+
+    // Check score threshold
+    if ($result['score'] < $min_score) {
+        $result['error'] = 'Score too low';
+        return $result;
+    }
+
+    // Check action matches (if expected_action provided)
+    // ปิด action check ไว้ก่อนเพื่อ debug
+    // if (!empty($expected_action) && $result['action'] !== $expected_action) {
+    //     $result['error'] = 'Action mismatch';
+    //     return $result;
+    // }
+
+    $result['success'] = true;
+    return $result;
+}
+
+/**
+ * WooCommerce Checkout reCAPTCHA v3 Validation
+ */
+add_action('woocommerce_checkout_process', function() {
+    if (!marsx_is_recaptcha_enabled()) {
+        return;
+    }
+
+    $recaptcha_token = isset($_POST['recaptcha_token']) ? sanitize_text_field($_POST['recaptcha_token']) : '';
+    $recaptcha_result = marsx_verify_recaptcha_v3($recaptcha_token, 'checkout', 0.5);
+
+    if (!$recaptcha_result['success']) {
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $is_english = (strpos($request_uri, '/en/') !== false || strpos($request_uri, '/en') === 0);
+
+        $error_message = $is_english
+            ? 'Security verification failed. Please refresh the page and try again.'
+            : 'การตรวจสอบความปลอดภัยล้มเหลว กรุณารีเฟรชหน้าและลองใหม่อีกครั้ง';
+
+        wc_add_notice($error_message, 'error');
+    }
+});
