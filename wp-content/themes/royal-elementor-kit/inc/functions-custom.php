@@ -631,3 +631,218 @@ add_action('woocommerce_checkout_process', function() {
         wc_add_notice($error_message, 'error');
     }
 });
+
+/**
+ * =========================================
+ * Beam Checkout Payment Gateway Integration
+ * =========================================
+ */
+
+// Beam Checkout Configuration
+// ต้องเพิ่มใน wp-config.php:
+// define('MARSX_BEAM_MERCHANT_ID', 'your-merchant-id');
+// define('MARSX_BEAM_API_KEY', 'your-api-key');
+// define('MARSX_BEAM_WEBHOOK_SECRET', 'your-webhook-secret');
+
+/**
+ * Load Beam Gateway Class - runs early on plugins_loaded
+ */
+add_action('plugins_loaded', 'marsx_load_beam_gateway', 0);
+function marsx_load_beam_gateway() {
+    if (!class_exists('WC_Payment_Gateway')) {
+        return;
+    }
+
+    $gateway_file = get_stylesheet_directory() . '/inc/class-wc-gateway-beam.php';
+    if (file_exists($gateway_file) && !class_exists('WC_Gateway_Beam')) {
+        require_once $gateway_file;
+    }
+}
+
+/**
+ * Register Beam Gateway with WooCommerce - separate filter
+ */
+add_filter('woocommerce_payment_gateways', 'marsx_add_beam_gateway', 10);
+function marsx_add_beam_gateway($gateways) {
+    // Load class if not yet loaded
+    if (!class_exists('WC_Gateway_Beam')) {
+        $gateway_file = get_stylesheet_directory() . '/inc/class-wc-gateway-beam.php';
+        if (file_exists($gateway_file)) {
+            require_once $gateway_file;
+        }
+    }
+
+    if (class_exists('WC_Gateway_Beam')) {
+        $gateways[] = 'WC_Gateway_Beam';
+    }
+    return $gateways;
+}
+
+/**
+ * Register Beam as offline payment method for new WooCommerce UI
+ */
+add_filter('woocommerce_admin_payment_gateway_suggestion_specs', function($specs) {
+    $specs[] = array(
+        'id' => 'beam_checkout',
+        'title' => 'Beam Checkout (QR Code)',
+        'content' => 'รับชำระเงินผ่าน QR Code PromptPay',
+        'image' => '',
+        'plugins' => array(),
+        'is_visible' => true,
+        'category_other' => array('TH'),
+        'category_additional' => array(),
+    );
+    return $specs;
+});
+
+/**
+ * Add Beam to offline payment methods list
+ */
+add_filter('woocommerce_admin_get_feature_config', function($features) {
+    return $features;
+});
+
+/**
+ * Add Beam Checkout to WooCommerce Settings submenu
+ */
+add_action('admin_menu', function() {
+    add_submenu_page(
+        'woocommerce',
+        'Beam Checkout Settings',
+        'Beam Checkout',
+        'manage_woocommerce',
+        'beam-checkout-settings',
+        'marsx_beam_settings_page'
+    );
+}, 99);
+
+/**
+ * Beam Checkout Settings Page
+ */
+function marsx_beam_settings_page() {
+    // Make sure gateway class is loaded
+    if (!class_exists('WC_Gateway_Beam')) {
+        $gateway_file = get_stylesheet_directory() . '/inc/class-wc-gateway-beam.php';
+        if (file_exists($gateway_file)) {
+            require_once $gateway_file;
+        }
+    }
+
+    if (!class_exists('WC_Gateway_Beam')) {
+        echo '<div class="wrap"><h1>Beam Checkout</h1><p>Error: Gateway class not found.</p></div>';
+        return;
+    }
+
+    $gateway = new WC_Gateway_Beam();
+
+    // Handle form submission
+    if (isset($_POST['save_beam_settings']) && wp_verify_nonce($_POST['beam_nonce'], 'save_beam_settings')) {
+        $gateway->process_admin_options();
+        echo '<div class="notice notice-success"><p>Settings saved.</p></div>';
+        // Reload gateway to get updated settings
+        $gateway = new WC_Gateway_Beam();
+    }
+
+    ?>
+    <div class="wrap">
+        <h1>Beam Checkout Settings</h1>
+        <form method="post" action="">
+            <?php wp_nonce_field('save_beam_settings', 'beam_nonce'); ?>
+            <table class="form-table">
+                <?php $gateway->generate_settings_html(); ?>
+            </table>
+            <p class="submit">
+                <button type="submit" name="save_beam_settings" class="button-primary">บันทึกการตั้งค่า</button>
+            </p>
+        </form>
+    </div>
+    <?php
+}
+
+/**
+ * Register Beam Webhook Endpoint
+ */
+add_action('init', 'marsx_register_beam_webhook_endpoint');
+function marsx_register_beam_webhook_endpoint() {
+    add_rewrite_rule('^beam-webhook/?$', 'index.php?beam_webhook=1', 'top');
+}
+
+/**
+ * Add beam_webhook query var
+ */
+add_filter('query_vars', 'marsx_beam_webhook_query_vars');
+function marsx_beam_webhook_query_vars($vars) {
+    $vars[] = 'beam_webhook';
+    return $vars;
+}
+
+/**
+ * Prevent 404 for beam-webhook endpoint
+ */
+add_filter('pre_handle_404', function($preempt, $wp_query) {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    if ($uri_path === '/beam-webhook') {
+        return true;
+    }
+
+    return $preempt;
+}, 5, 2);
+
+/**
+ * Handle Beam Webhook Requests
+ */
+add_action('template_redirect', 'marsx_handle_beam_webhook');
+function marsx_handle_beam_webhook() {
+    if (!get_query_var('beam_webhook')) {
+        return;
+    }
+
+    // Only accept POST requests
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        status_header(405);
+        echo json_encode(array('error' => 'Method not allowed'));
+        exit;
+    }
+
+    // Get raw body
+    $raw_body = file_get_contents('php://input');
+
+    // Get signature header
+    $signature = isset($_SERVER['HTTP_X_HUB_SIGNATURE']) ? $_SERVER['HTTP_X_HUB_SIGNATURE'] : '';
+
+    // Log webhook request
+    error_log('Beam Webhook Request Received');
+    error_log('Beam Webhook Signature: ' . $signature);
+    error_log('Beam Webhook Body: ' . $raw_body);
+
+    // Process webhook
+    if (class_exists('WC_Gateway_Beam')) {
+        $gateway = new WC_Gateway_Beam();
+        $success = $gateway->handle_webhook($raw_body, $signature);
+
+        if ($success) {
+            status_header(200);
+            echo json_encode(array('status' => 'ok'));
+        } else {
+            status_header(400);
+            echo json_encode(array('error' => 'Webhook processing failed'));
+        }
+    } else {
+        status_header(500);
+        echo json_encode(array('error' => 'Gateway not available'));
+    }
+
+    exit;
+}
+
+/**
+ * Check if Beam is configured
+ * @return bool
+ */
+function marsx_is_beam_configured() {
+    return defined('MARSX_BEAM_MERCHANT_ID') && defined('MARSX_BEAM_API_KEY')
+        && !empty(MARSX_BEAM_MERCHANT_ID) && !empty(MARSX_BEAM_API_KEY);
+}

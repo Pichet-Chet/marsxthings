@@ -132,10 +132,10 @@ add_filter('xmlrpc_enabled', '__return_false');
 /*
 ** MarsX Custom Functions
 */
-require_once get_parent_theme_file_path( '/inc/functions-custom.php' );
+require_once get_stylesheet_directory() . '/inc/functions-custom.php';
 
 /*
 ** MarsX Custom Shortcodes
 */
-require_once get_parent_theme_file_path( '/inc/shortcodes-custom.php' );
+require_once get_stylesheet_directory() . '/inc/shortcodes-custom.php';
 
