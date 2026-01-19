@@ -570,6 +570,46 @@ function marsx_verify_recaptcha_v3($token, $expected_action = '', $min_score = 0
 }
 
 /**
+ * =========================================
+ * Custom Order Number Format
+ * =========================================
+ * Format: MX + YYMMDD + Order ID
+ * Example: MX250119-2130 (Jan 19, 2025, Order #2130)
+ */
+
+/**
+ * Generate custom order number
+ * @param int $order_id
+ * @return string Custom formatted order number
+ */
+function marsx_get_custom_order_number($order_id) {
+    $order = wc_get_order($order_id);
+
+    if (!$order) {
+        return $order_id;
+    }
+
+    // Get order date
+    $order_date = $order->get_date_created();
+
+    if ($order_date) {
+        // Format: MX + YYMMDD + - + Order ID
+        $date_part = $order_date->date('ymd');
+        return 'MX' . $date_part . '-' . $order_id;
+    }
+
+    // Fallback: use current date if order date not available
+    return 'MX' . date('ymd') . '-' . $order_id;
+}
+
+/**
+ * Filter WooCommerce order number display
+ */
+add_filter('woocommerce_order_number', function($order_id, $order) {
+    return marsx_get_custom_order_number($order->get_id());
+}, 10, 2);
+
+/**
  * WooCommerce Checkout reCAPTCHA v3 Validation
  */
 add_action('woocommerce_checkout_process', function() {

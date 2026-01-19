@@ -196,20 +196,158 @@ get_header();
     .marsx-welcome-message h3 { font-size: 1.4rem; margin-bottom: 10px; }
     .marsx-welcome-message p { opacity: 0.95; line-height: 1.6; }
 
-    /* Orders Table */
-    .marsx-orders-table { width: 100%; border-collapse: collapse; }
-    .marsx-orders-table th, .marsx-orders-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
-    .marsx-orders-table th { background: #f8f9fa; font-weight: 600; color: #333; font-size: 0.9rem; }
-    .marsx-orders-table tr:hover { background: #fafafa; }
-    .marsx-order-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
-    .marsx-order-status.completed { background: #d4edda; color: #155724; }
-    .marsx-order-status.processing { background: #fff3cd; color: #856404; }
-    .marsx-order-status.pending { background: #e2e3e5; color: #383d41; }
-    .marsx-order-status.cancelled { background: #f8d7da; color: #721c24; }
-    .marsx-btn-view { color: #f39c12; text-decoration: none; font-weight: 500; }
-    .marsx-btn-view:hover { text-decoration: underline; }
-    .marsx-no-orders { text-align: center; padding: 50px; color: #666; }
-    .marsx-no-orders svg { width: 60px; height: 60px; stroke: #ddd; margin-bottom: 15px; }
+    /* Orders - Modern Card Design */
+    .marsx-orders-list { display: flex; flex-direction: column; gap: 16px; }
+    .marsx-order-card {
+        background: #fff;
+        border: 1px solid #eaeaea;
+        border-radius: 16px;
+        padding: 0;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    .marsx-order-card:hover {
+        border-color: #f39c12;
+        box-shadow: 0 8px 25px rgba(243, 156, 18, 0.12);
+        transform: translateY(-2px);
+    }
+    .marsx-order-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #fefefe 0%, #f9f9f9 100%);
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .marsx-order-number {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a1a1a;
+    }
+    .marsx-order-number span {
+        color: #f39c12;
+    }
+    .marsx-order-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .marsx-order-status::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+    .marsx-order-status.completed { background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); color: #155724; }
+    .marsx-order-status.processing { background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%); color: #856404; }
+    .marsx-order-status.pending { background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%); color: #383d41; }
+    .marsx-order-status.on-hold { background: linear-gradient(135deg, #cce5ff 0%, #b8daff 100%); color: #004085; }
+    .marsx-order-status.cancelled { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); color: #721c24; }
+    .marsx-order-status.refunded { background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%); color: #383d41; }
+
+    .marsx-order-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 20px;
+        padding: 20px 24px;
+        align-items: center;
+    }
+    .marsx-order-info-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .marsx-order-info-label {
+        font-size: 0.8rem;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+    .marsx-order-info-value {
+        font-size: 1rem;
+        color: #333;
+        font-weight: 600;
+    }
+    .marsx-order-info-value.price {
+        font-size: 1.15rem;
+        color: #f39c12;
+        font-weight: 700;
+    }
+    .marsx-btn-view {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+    .marsx-btn-view:hover {
+        transform: translateX(3px);
+        box-shadow: 0 6px 20px rgba(243, 156, 18, 0.35);
+    }
+    .marsx-btn-view svg {
+        width: 16px;
+        height: 16px;
+        transition: transform 0.3s ease;
+    }
+    .marsx-btn-view:hover svg {
+        transform: translateX(3px);
+    }
+    .marsx-no-orders { text-align: center; padding: 60px 30px; color: #666; }
+    .marsx-no-orders svg { width: 80px; height: 80px; stroke: #ddd; margin-bottom: 20px; }
+    .marsx-no-orders p { font-size: 1.1rem; margin-bottom: 20px; }
+    .marsx-no-orders .marsx-btn-shop {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 28px;
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        border-radius: 30px;
+        transition: all 0.3s ease;
+    }
+    .marsx-no-orders .marsx-btn-shop:hover {
+        box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
+        transform: translateY(-2px);
+    }
+
+    /* Mobile responsive for orders */
+    @media (max-width: 768px) {
+        .marsx-order-card-body {
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .marsx-order-card-body .marsx-btn-view {
+            grid-column: span 2;
+            justify-content: center;
+        }
+    }
+    @media (max-width: 480px) {
+        .marsx-order-card-header {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .marsx-order-card-body {
+            grid-template-columns: 1fr;
+        }
+        .marsx-order-card-body .marsx-btn-view {
+            grid-column: span 1;
+        }
+    }
 
     /* Forms */
     .marsx-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
@@ -354,35 +492,41 @@ get_header();
                     <?php if (class_exists('WooCommerce')) :
                         $orders = wc_get_orders(array('customer_id' => $current_user->ID, 'limit' => 10, 'orderby' => 'date', 'order' => 'DESC'));
                         if ($orders) : ?>
-                            <table class="marsx-orders-table">
-                                <thead>
-                                    <tr>
-                                        <th>เลขที่</th>
-                                        <th>วันที่</th>
-                                        <th>สถานะ</th>
-                                        <th>ยอดรวม</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($orders as $order) :
-                                        $status = $order->get_status();
-                                        $status_labels = array('completed' => 'เสร็จสิ้น', 'processing' => 'กำลังดำเนินการ', 'pending' => 'รอดำเนินการ', 'cancelled' => 'ยกเลิก', 'on-hold' => 'รอการชำระ', 'refunded' => 'คืนเงินแล้ว');
-                                    ?>
-                                        <tr>
-                                            <td>#<?php echo $order->get_order_number(); ?></td>
-                                            <td><?php echo date('d/m/Y', strtotime($order->get_date_created())); ?></td>
-                                            <td><span class="marsx-order-status <?php echo esc_attr($status); ?>"><?php echo isset($status_labels[$status]) ? $status_labels[$status] : $status; ?></span></td>
-                                            <td>฿<?php echo number_format($order->get_total(), 0); ?></td>
-                                            <td><a href="<?php echo $order->get_view_order_url(); ?>" class="marsx-btn-view">ดูรายละเอียด</a></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                            <div class="marsx-orders-list">
+                                <?php foreach ($orders as $order) :
+                                    $status = $order->get_status();
+                                    $status_labels = array('completed' => 'เสร็จสิ้น', 'processing' => 'กำลังดำเนินการ', 'pending' => 'รอดำเนินการ', 'cancelled' => 'ยกเลิก', 'on-hold' => 'รอการชำระ', 'refunded' => 'คืนเงินแล้ว');
+                                ?>
+                                <div class="marsx-order-card">
+                                    <div class="marsx-order-card-header">
+                                        <div class="marsx-order-number">คำสั่งซื้อ <span>#<?php echo $order->get_order_number(); ?></span></div>
+                                        <span class="marsx-order-status <?php echo esc_attr($status); ?>"><?php echo isset($status_labels[$status]) ? $status_labels[$status] : $status; ?></span>
+                                    </div>
+                                    <div class="marsx-order-card-body">
+                                        <div class="marsx-order-info-group">
+                                            <span class="marsx-order-info-label">วันที่สั่งซื้อ</span>
+                                            <span class="marsx-order-info-value"><?php echo $order->get_date_created()->date_i18n('d/m/Y'); ?></span>
+                                        </div>
+                                        <div class="marsx-order-info-group">
+                                            <span class="marsx-order-info-label">ยอดรวม</span>
+                                            <span class="marsx-order-info-value price">฿<?php echo number_format($order->get_total(), 0); ?></span>
+                                        </div>
+                                        <a href="<?php echo $order->get_view_order_url(); ?>" class="marsx-btn-view">
+                                            ดูรายละเอียด
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                        </a>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
                         <?php else : ?>
                             <div class="marsx-no-orders">
                                 <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                                 <p>คุณยังไม่มีคำสั่งซื้อ</p>
+                                <a href="<?php echo home_url('/products/'); ?>" class="marsx-btn-shop">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                                    เริ่มช้อปปิ้ง
+                                </a>
                             </div>
                         <?php endif;
                     endif; ?>

@@ -442,7 +442,7 @@ get_header();
                 <div class="marsx-order-header">
                     <div>
                         <div class="marsx-order-number">คำสั่งซื้อ #<?php echo $order->get_order_number(); ?></div>
-                        <div class="marsx-order-date">วันที่สั่งซื้อ: <?php echo date('d/m/Y H:i', strtotime($order->get_date_created())); ?></div>
+                        <div class="marsx-order-date">วันที่สั่งซื้อ: <?php echo $order->get_date_created()->date_i18n('d/m/Y H:i'); ?></div>
                     </div>
                     <?php
                     $status = $order->get_status();
