@@ -231,3 +231,228 @@ add_filter('template_include', function($template) {
 
     return $template;
 }, 99);
+
+/**
+ * =========================================
+ * Google Sign-In Integration
+ * =========================================
+ */
+
+// Google OAuth Configuration
+// ต้องเพิ่มใน wp-config.php:
+// define('MARSX_GOOGLE_CLIENT_ID', 'your-client-id');
+// define('MARSX_GOOGLE_CLIENT_SECRET', 'your-client-secret');
+if (!defined('MARSX_GOOGLE_REDIRECT_URI')) {
+    define('MARSX_GOOGLE_REDIRECT_URI', home_url('/google-callback/'));
+}
+
+/**
+ * Generate Google OAuth URL
+ */
+function marsx_get_google_auth_url($lang = 'th') {
+    $state = wp_create_nonce('marsx_google_auth') . '|' . $lang;
+
+    $params = array(
+        'client_id' => MARSX_GOOGLE_CLIENT_ID,
+        'redirect_uri' => MARSX_GOOGLE_REDIRECT_URI,
+        'response_type' => 'code',
+        'scope' => 'openid email profile',
+        'access_type' => 'online',
+        'state' => base64_encode($state),
+        'prompt' => 'select_account',
+    );
+
+    return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params);
+}
+
+/**
+ * Add google-callback to custom pages list (prevent 404)
+ */
+add_filter('pre_handle_404', function($preempt, $wp_query) {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    if ($uri_path === '/google-callback') {
+        return true;
+    }
+
+    return $preempt;
+}, 5, 2);
+
+/**
+ * Handle Google OAuth Callback
+ */
+add_action('template_redirect', function() {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    if ($uri_path !== '/google-callback') {
+        return;
+    }
+
+    // Get authorization code
+    $code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : '';
+    $state = isset($_GET['state']) ? base64_decode($_GET['state']) : '';
+    $error = isset($_GET['error']) ? sanitize_text_field($_GET['error']) : '';
+
+    // Parse state to get language and nonce
+    $state_parts = explode('|', $state);
+    $nonce = $state_parts[0] ?? '';
+    $lang = $state_parts[1] ?? 'th';
+    $is_english = ($lang === 'en');
+
+    // Error handling function
+    $redirect_with_error = function($message) use ($is_english) {
+        $login_url = $is_english ? home_url('/en/login/') : home_url('/login/');
+        wp_redirect($login_url . '?google_error=' . urlencode($message));
+        exit;
+    };
+
+    // Check for errors
+    if ($error) {
+        $redirect_with_error($is_english ? 'Google login was cancelled' : 'การเข้าสู่ระบบด้วย Google ถูกยกเลิก');
+    }
+
+    // Verify nonce
+    if (!wp_verify_nonce($nonce, 'marsx_google_auth')) {
+        $redirect_with_error($is_english ? 'Security verification failed' : 'การตรวจสอบความปลอดภัยล้มเหลว');
+    }
+
+    if (empty($code)) {
+        $redirect_with_error($is_english ? 'Authorization code not received' : 'ไม่ได้รับรหัสยืนยัน');
+    }
+
+    // Exchange code for access token
+    $token_response = wp_remote_post('https://oauth2.googleapis.com/token', array(
+        'body' => array(
+            'client_id' => MARSX_GOOGLE_CLIENT_ID,
+            'client_secret' => MARSX_GOOGLE_CLIENT_SECRET,
+            'code' => $code,
+            'grant_type' => 'authorization_code',
+            'redirect_uri' => MARSX_GOOGLE_REDIRECT_URI,
+        ),
+        'timeout' => 30,
+    ));
+
+    if (is_wp_error($token_response)) {
+        $redirect_with_error($is_english ? 'Failed to connect to Google' : 'ไม่สามารถเชื่อมต่อกับ Google ได้');
+    }
+
+    $token_data = json_decode(wp_remote_retrieve_body($token_response), true);
+
+    if (!isset($token_data['access_token'])) {
+        $redirect_with_error($is_english ? 'Failed to get access token' : 'ไม่สามารถรับ access token ได้');
+    }
+
+    // Get user info from Google
+    $user_response = wp_remote_get('https://www.googleapis.com/oauth2/v2/userinfo', array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $token_data['access_token'],
+        ),
+        'timeout' => 30,
+    ));
+
+    if (is_wp_error($user_response)) {
+        $redirect_with_error($is_english ? 'Failed to get user information' : 'ไม่สามารถดึงข้อมูลผู้ใช้ได้');
+    }
+
+    $google_user = json_decode(wp_remote_retrieve_body($user_response), true);
+
+    if (!isset($google_user['email'])) {
+        $redirect_with_error($is_english ? 'Email not provided by Google' : 'Google ไม่ได้ให้ข้อมูลอีเมล');
+    }
+
+    $email = sanitize_email($google_user['email']);
+    $google_id = sanitize_text_field($google_user['id']);
+    $name = isset($google_user['name']) ? sanitize_text_field($google_user['name']) : '';
+    $first_name = isset($google_user['given_name']) ? sanitize_text_field($google_user['given_name']) : '';
+    $last_name = isset($google_user['family_name']) ? sanitize_text_field($google_user['family_name']) : '';
+    $picture = isset($google_user['picture']) ? esc_url_raw($google_user['picture']) : '';
+
+    // Check if user exists by email
+    $user = get_user_by('email', $email);
+
+    if (!$user) {
+        // Check if user exists by Google ID (stored in user meta)
+        $users = get_users(array(
+            'meta_key' => 'marsx_google_id',
+            'meta_value' => $google_id,
+            'number' => 1,
+        ));
+
+        if (!empty($users)) {
+            $user = $users[0];
+        }
+    }
+
+    if (!$user) {
+        // Create new user
+        $username = marsx_generate_unique_username($email, $first_name, $last_name);
+        $random_password = wp_generate_password(16, true, true);
+
+        $user_id = wp_create_user($username, $random_password, $email);
+
+        if (is_wp_error($user_id)) {
+            $redirect_with_error($is_english ? 'Failed to create account' : 'ไม่สามารถสร้างบัญชีได้');
+        }
+
+        // Update user meta
+        wp_update_user(array(
+            'ID' => $user_id,
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'display_name' => $name ?: $first_name,
+        ));
+
+        // Set role to customer if WooCommerce is active
+        $user = get_user_by('ID', $user_id);
+        if (class_exists('WooCommerce')) {
+            $user->set_role('customer');
+        }
+
+        // Store Google ID
+        update_user_meta($user_id, 'marsx_google_id', $google_id);
+        update_user_meta($user_id, 'marsx_google_picture', $picture);
+        update_user_meta($user_id, 'marsx_registered_via', 'google');
+
+    } else {
+        // Update existing user's Google info
+        update_user_meta($user->ID, 'marsx_google_id', $google_id);
+        update_user_meta($user->ID, 'marsx_google_picture', $picture);
+    }
+
+    // Log the user in
+    wp_clear_auth_cookie();
+    wp_set_current_user($user->ID);
+    wp_set_auth_cookie($user->ID, true);
+
+    // Redirect to my-account page
+    $redirect_url = $is_english ? home_url('/en/my-account/') : home_url('/my-account/');
+    wp_redirect($redirect_url);
+    exit;
+}, 5);
+
+/**
+ * Generate unique username from email or name
+ */
+function marsx_generate_unique_username($email, $first_name = '', $last_name = '') {
+    // Try using first name + last name
+    if ($first_name) {
+        $base_username = sanitize_user(strtolower($first_name . ($last_name ? '_' . $last_name : '')));
+    } else {
+        // Use email prefix
+        $base_username = sanitize_user(strtolower(strstr($email, '@', true)));
+    }
+
+    $username = $base_username;
+    $counter = 1;
+
+    while (username_exists($username)) {
+        $username = $base_username . $counter;
+        $counter++;
+    }
+
+    return $username;
+}
