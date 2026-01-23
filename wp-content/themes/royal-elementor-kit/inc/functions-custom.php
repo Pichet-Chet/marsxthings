@@ -846,3 +846,17 @@ function marsx_is_beam_configured() {
     return defined('MARSX_BEAM_MERCHANT_ID') && defined('MARSX_BEAM_API_KEY')
         && !empty(MARSX_BEAM_MERCHANT_ID) && !empty(MARSX_BEAM_API_KEY);
 }
+
+/**
+ * =========================================
+ * WP-Admin Custom Styling
+ * =========================================
+ */
+require_once get_stylesheet_directory() . '/inc/admin-custom.php';
+
+/**
+ * =========================================
+ * WP-Admin PJAX Navigation
+ * =========================================
+ */
+// require_once get_stylesheet_directory() . '/inc/admin-pjax.php';

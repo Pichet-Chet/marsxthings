@@ -41,7 +41,7 @@ class WC_Gateway_Beam extends WC_Payment_Gateway {
      */
     public function __construct() {
         $this->id = 'beam_checkout';
-        $this->icon = ''; // Can add Beam logo URL here
+        $this->icon = get_stylesheet_directory_uri() . '/assets/images/beam-logo.png';
         $this->has_fields = false;
         $this->method_title = 'Beam Checkout';
         $this->method_description = 'รับชำระเงินผ่าน QR Code PromptPay ด้วย Beam Checkout';
@@ -97,13 +97,13 @@ class WC_Gateway_Beam extends WC_Payment_Gateway {
                 'title'       => 'คำอธิบาย (ไทย)',
                 'type'        => 'textarea',
                 'description' => 'คำอธิบายวิธีการชำระเงิน',
-                'default'     => 'สแกน QR Code เพื่อชำระเงินผ่าน PromptPay',
+                'default'     => 'สแกน QR Code เพื่อชำระเงินผ่าน PromptPay (ระบบจะพาไปหน้าชำระเงินของ Beam Checkout)',
             ),
             'description_en' => array(
                 'title'       => 'คำอธิบาย (English)',
                 'type'        => 'textarea',
                 'description' => 'Payment method description for English pages',
-                'default'     => 'Scan QR Code to pay via PromptPay',
+                'default'     => 'Scan QR Code to pay via PromptPay (You will be redirected to Beam Checkout)',
             ),
         );
     }

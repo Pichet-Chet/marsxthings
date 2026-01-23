@@ -139,3 +139,9 @@ require_once get_stylesheet_directory() . '/inc/functions-custom.php';
 */
 require_once get_stylesheet_directory() . '/inc/shortcodes-custom.php';
 
+/*
+** MarsX WooCommerce Customizations
+** (Cart Icon, Toast Notification, AJAX Add to Cart)
+*/
+require_once get_stylesheet_directory() . '/inc/woocommerce-custom.php';
+

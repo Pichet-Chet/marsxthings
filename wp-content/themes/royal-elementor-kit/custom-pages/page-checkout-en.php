@@ -501,6 +501,21 @@ $checkout = WC()->checkout();
         width: auto;
     }
 
+    /* Beam Checkout payment method - professional styling */
+    .marsx-order-review #payment .payment_methods li.payment_method_beam_checkout label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .marsx-order-review #payment .payment_methods li.payment_method_beam_checkout label img {
+        max-height: 40px !important;
+        background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
+        padding: 8px 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(243, 156, 18, 0.2);
+    }
+
     .marsx-order-review #payment .payment_box {
         padding: 15px;
         background: #f8f9fa;

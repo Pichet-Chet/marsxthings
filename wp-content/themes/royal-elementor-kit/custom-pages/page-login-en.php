@@ -42,7 +42,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
             $user = wp_signon($creds, is_ssl());
 
             if (is_wp_error($user)) {
-                $login_error = 'Invalid email or password.';
+                // Get error codes from WP_Error (including Limit Login Attempts Reloaded)
+                $error_codes = $user->get_error_codes();
+                $all_messages = $user->get_error_messages();
+
+                // Check if locked out by Limit Login Attempts Reloaded
+                if (in_array('too_many_retries', $error_codes) || in_array('locked', $error_codes)) {
+                    $login_error = wp_strip_all_tags($user->get_error_message());
+                } else {
+                    // Base error message
+                    if (in_array('invalid_username', $error_codes) || in_array('invalid_email', $error_codes)) {
+                        $login_error = 'Account not found.';
+                    } elseif (in_array('incorrect_password', $error_codes)) {
+                        $login_error = 'Incorrect password.';
+                    } else {
+                        $login_error = 'Invalid email or password.';
+                    }
+
+                    // Check for remaining attempts message from Limit Login Attempts Reloaded
+                    foreach ($all_messages as $msg) {
+                        $msg_lower = strtolower($msg);
+                        if (strpos($msg_lower, 'attempt') !== false || strpos($msg_lower, 'retries') !== false || strpos($msg_lower, 'remaining') !== false) {
+                            $login_error .= ' ' . wp_strip_all_tags($msg);
+                            break;
+                        }
+                    }
+                }
             } else {
                 wp_redirect(home_url('/en/my-account/'));
                 exit;

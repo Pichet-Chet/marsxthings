@@ -329,6 +329,198 @@ function marsx_shortcodes_enqueue_styles() {
             display: none !important;
         }
     }
+
+    /* ===== Add to Cart Bar (Inline) ===== */
+    .marsx-sticky-cart {
+        background: #fff !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+        border: 1px solid #eee !important;
+        border-radius: 12px !important;
+        padding: 12px 20px !important;
+        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        margin: 20px 0 !important;
+    }
+
+    .marsx-sticky-cart-inner {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+        gap: 20px !important;
+    }
+
+    .marsx-sticky-cart-product {
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .marsx-sticky-cart-image {
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 8px !important;
+        object-fit: cover !important;
+        border: 1px solid #eee !important;
+        flex-shrink: 0 !important;
+    }
+
+    .marsx-sticky-cart-title {
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        color: #1a1a1a !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 300px !important;
+    }
+
+    .marsx-sticky-cart-actions {
+        display: flex !important;
+        align-items: center !important;
+        gap: 20px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .marsx-sticky-cart-qty {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0 !important;
+        border: 1px solid #ddd !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
+    }
+
+    .marsx-sticky-cart-qty-btn {
+        width: 36px !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #f8f9fa !important;
+        border: none !important;
+        cursor: pointer !important;
+        font-size: 1.2rem !important;
+        color: #333 !important;
+        transition: all 0.2s !important;
+    }
+
+    .marsx-sticky-cart-qty-btn:hover {
+        background: #e9ecef !important;
+        color: var(--e-global-color-primary, #ff6b35) !important;
+    }
+
+    .marsx-sticky-cart-qty-input {
+        width: 50px !important;
+        height: 36px !important;
+        text-align: center !important;
+        border: none !important;
+        border-left: 1px solid #ddd !important;
+        border-right: 1px solid #ddd !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        -moz-appearance: textfield !important;
+    }
+
+    .marsx-sticky-cart-qty-input::-webkit-outer-spin-button,
+    .marsx-sticky-cart-qty-input::-webkit-inner-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }
+
+    .marsx-sticky-cart-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        padding: 12px 32px !important;
+        background: var(--e-global-color-primary, #ff6b35) !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.2s !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    .marsx-sticky-cart-btn:hover {
+        filter: brightness(0.9) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .marsx-sticky-cart-btn:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+    }
+
+    .marsx-sticky-cart-btn svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .marsx-sticky-cart-btn.loading::after {
+        content: '' !important;
+        width: 16px !important;
+        height: 16px !important;
+        border: 2px solid #fff !important;
+        border-top-color: transparent !important;
+        border-radius: 50% !important;
+        animation: marsx-spin 0.8s linear infinite !important;
+        margin-left: 8px !important;
+    }
+
+    @keyframes marsx-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive for Sticky Cart */
+    @media (max-width: 768px) {
+        .marsx-sticky-cart {
+            padding: 10px 15px !important;
+        }
+
+        .marsx-sticky-cart-image {
+            width: 40px !important;
+            height: 40px !important;
+        }
+
+        .marsx-sticky-cart-title {
+            display: none !important;
+        }
+
+        .marsx-sticky-cart-qty-btn {
+            width: 32px !important;
+            height: 32px !important;
+        }
+
+        .marsx-sticky-cart-qty-input {
+            width: 40px !important;
+            height: 32px !important;
+        }
+
+        .marsx-sticky-cart-btn {
+            padding: 10px 20px !important;
+            font-size: 0.85rem !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .marsx-sticky-cart-product {
+            flex: 0 !important;
+        }
+
+        .marsx-sticky-cart-actions {
+            flex: 1 !important;
+            justify-content: flex-end !important;
+        }
+    }
     </style>
     <?php
 }
@@ -344,11 +536,13 @@ add_action('wp_head', 'marsx_shortcodes_enqueue_styles', 999);
  * - avatar_size: ขนาด avatar (default: 40)
  * - login_url: URL หน้า login (default: /login/)
  * - login_text: ข้อความปุ่ม login (default: เข้าสู่ระบบ)
+ * - max_width: ความกว้างสูงสุดของ email/name (default: 150px)
  *
  * ตัวอย่างการใช้งาน:
  * [marsx_user_menu]
  * [marsx_user_menu show_email="no" show_name="yes"]
  * [marsx_user_menu avatar_size="50" login_url="/en/login/" login_text="Login"]
+ * [marsx_user_menu max_width="200px"]
  */
 function marsx_user_menu_shortcode($atts) {
     // Default attributes
@@ -359,6 +553,7 @@ function marsx_user_menu_shortcode($atts) {
         'avatar_size'   => 40,
         'login_url'     => '/login/',
         'login_text'    => 'เข้าสู่ระบบ',
+        'max_width'     => '150px',
     ), $atts, 'marsx_user_menu');
 
     // Start output buffering
@@ -375,6 +570,7 @@ function marsx_user_menu_shortcode($atts) {
         $first_name = $user->first_name;
         $last_name = $user->last_name;
         $fullname = trim($first_name . ' ' . $last_name);
+        $max_width = esc_attr($atts['max_width']);
 
         // ตรวจสอบภาษาจาก URL
         $is_english = marsx_is_english_page();
@@ -397,10 +593,10 @@ function marsx_user_menu_shortcode($atts) {
                         <span class="marsx-um-name"><?php echo esc_html($name); ?></span>
                     <?php endif; ?>
                     <?php if ($atts['show_email'] === 'yes') : ?>
-                        <span class="marsx-um-email"><?php echo esc_html($email); ?></span>
+                        <span class="marsx-um-email" style="max-width: <?php echo $max_width; ?>;"><?php echo esc_html($email); ?></span>
                     <?php endif; ?>
                     <?php if ($atts['show_fullname'] === 'yes' && !empty($fullname)) : ?>
-                        <span class="marsx-um-fullname"><?php echo esc_html($fullname); ?></span>
+                        <span class="marsx-um-fullname" style="max-width: <?php echo $max_width; ?>;"><?php echo esc_html($fullname); ?></span>
                     <?php endif; ?>
                 </div>
                 <svg class="marsx-um-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -710,176 +906,239 @@ function marsx_user_menu_styles() {
     <?php
 }
 
-
 /**
- * Shortcode: [marsx_cart_icon]
+ * Shortcode: [marsx_sticky_cart]
  *
- * แสดงไอคอนตะกร้าพร้อมจำนวนสินค้า
+ * Sticky Add to Cart Bar สำหรับหน้า Single Product
  *
  * Parameters:
- * - cart_url: URL หน้าตะกร้า (default: /products/cart/)
- * - icon_size: ขนาดไอคอน (default: 24)
- * - show_count: yes/no แสดงจำนวนหรือไม่ (default: yes)
- * - show_total: yes/no แสดงยอดรวมหรือไม่ (default: no)
+ * - show_image: yes/no (default: yes) - แสดงรูปสินค้า
+ * - show_title: yes/no (default: yes) - แสดงชื่อสินค้า
+ * - show_qty: yes/no (default: yes) - แสดงตัวเลือกจำนวน
+ * - button_text: ข้อความปุ่ม (default: ADD TO CART)
+ * - button_text_th: ข้อความปุ่มภาษาไทย (default: เพิ่มลงตะกร้า)
+ * - scroll_offset: ระยะ scroll ก่อนแสดง bar (default: 300)
  *
  * ตัวอย่างการใช้งาน:
- * [marsx_cart_icon]
- * [marsx_cart_icon cart_url="/en/products/cart/" show_total="yes"]
- * [marsx_cart_icon icon_size="28" show_count="yes"]
+ * [marsx_sticky_cart]
+ * [marsx_sticky_cart show_image="no" button_text="BUY NOW"]
+ * [marsx_sticky_cart scroll_offset="500"]
  */
-function marsx_cart_icon_shortcode($atts) {
+function marsx_sticky_cart_shortcode($atts) {
+    // ตรวจสอบว่า WooCommerce active
+    if (!class_exists('WooCommerce')) {
+        return '';
+    }
+
+    global $product, $post;
+
+    // พยายามดึง product จากหลายแหล่ง
+    if (!$product || !is_a($product, 'WC_Product')) {
+        if ($post && $post->post_type === 'product') {
+            $product = wc_get_product($post->ID);
+        }
+    }
+
+    // ถ้ายังไม่มี product ให้ return ว่าง (แต่ไม่ block ถ้าอยู่ใน template)
+    if (!$product) {
+        // สำหรับ debug - แสดง placeholder ใน Elementor editor
+        if (defined('ELEMENTOR_VERSION') && \Elementor\Plugin::$instance->editor->is_edit_mode()) {
+            return '<div style="padding:20px;background:#f5f5f5;text-align:center;border-radius:8px;">📦 Sticky Cart Bar จะแสดงในหน้า Single Product</div>';
+        }
+        return '';
+    }
+
     // Default attributes
     $atts = shortcode_atts(array(
-        'cart_url'   => '/products/cart/',
-        'icon_size'  => 24,
-        'show_count' => 'yes',
-        'show_total' => 'no',
-    ), $atts, 'marsx_cart_icon');
+        'show_image'     => 'yes',
+        'show_title'     => 'yes',
+        'show_qty'       => 'yes',
+        'button_text'    => 'ADD TO CART',
+        'button_text_th' => 'เพิ่มลงตะกร้า',
+        'scroll_offset'  => 300,
+    ), $atts, 'marsx_sticky_cart');
+
+    // ตรวจสอบภาษา
+    $is_english = marsx_is_english_page();
+    $button_text = $is_english ? $atts['button_text'] : $atts['button_text_th'];
+
+    // ข้อมูลสินค้า
+    $product_id = $product->get_id();
+    $product_title = $product->get_name();
+    $product_image = wp_get_attachment_image_src(get_post_thumbnail_id($product_id), 'thumbnail');
+    $product_image_url = $product_image ? $product_image[0] : wc_placeholder_img_src('thumbnail');
 
     // Start output buffering
     ob_start();
-
-    // เพิ่ม CSS (จะโหลดครั้งเดียว)
-    marsx_cart_icon_styles();
-
-    // ดึงจำนวนสินค้าในตะกร้า
-    $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
-    $cart_total = WC()->cart ? WC()->cart->get_cart_total() : '฿0';
-    $cart_url = home_url($atts['cart_url']);
-    $icon_size = intval($atts['icon_size']);
     ?>
-    <a href="<?php echo esc_url($cart_url); ?>" class="marsx-cart-icon">
-        <div class="marsx-cart-icon-wrapper">
-            <svg class="marsx-cart-svg" width="<?php echo $icon_size; ?>" height="<?php echo $icon_size; ?>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 6h15l-1.5 9h-12z"></path>
-                <circle cx="9" cy="20" r="1.5"></circle>
-                <circle cx="17" cy="20" r="1.5"></circle>
-                <path d="M3 3l2.5 2.5"></path>
-                <path d="M5.5 5.5L6 6"></path>
-                <path d="M1 1l3 3" stroke-width="2.5"></path>
-            </svg>
-            <?php if ($atts['show_count'] === 'yes' && $cart_count > 0) : ?>
-                <span class="marsx-cart-count"><?php echo $cart_count; ?></span>
-            <?php endif; ?>
+    <div id="marsx-sticky-cart" class="marsx-sticky-cart">
+        <div class="marsx-sticky-cart-inner">
+            <div class="marsx-sticky-cart-product">
+                <?php if ($atts['show_image'] === 'yes') : ?>
+                    <img src="<?php echo esc_url($product_image_url); ?>" alt="<?php echo esc_attr($product_title); ?>" class="marsx-sticky-cart-image">
+                <?php endif; ?>
+                <?php if ($atts['show_title'] === 'yes') : ?>
+                    <span class="marsx-sticky-cart-title"><?php echo esc_html($product_title); ?></span>
+                <?php endif; ?>
+            </div>
+
+            <div class="marsx-sticky-cart-actions">
+                <?php if ($atts['show_qty'] === 'yes') : ?>
+                    <div class="marsx-sticky-cart-qty">
+                        <button type="button" class="marsx-sticky-cart-qty-btn" data-action="minus">−</button>
+                        <input type="number" class="marsx-sticky-cart-qty-input" value="1" min="1" max="<?php echo esc_attr($product->get_stock_quantity() ?: 99); ?>">
+                        <button type="button" class="marsx-sticky-cart-qty-btn" data-action="plus">+</button>
+                    </div>
+                <?php endif; ?>
+
+                <button type="button" class="marsx-sticky-cart-btn" data-product-id="<?php echo esc_attr($product_id); ?>">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    <?php echo esc_html($button_text); ?>
+                </button>
+            </div>
         </div>
-        <?php if ($atts['show_total'] === 'yes') : ?>
-            <span class="marsx-cart-total"><?php echo $cart_total; ?></span>
-        <?php endif; ?>
-    </a>
+    </div>
+
+    <script>
+    (function() {
+        const stickyCart = document.getElementById('marsx-sticky-cart');
+        if (!stickyCart) return;
+
+        const qtyInput = stickyCart.querySelector('.marsx-sticky-cart-qty-input');
+        const minusBtn = stickyCart.querySelector('[data-action="minus"]');
+        const plusBtn = stickyCart.querySelector('[data-action="plus"]');
+        const addToCartBtn = stickyCart.querySelector('.marsx-sticky-cart-btn');
+        const productId = addToCartBtn?.dataset.productId;
+
+        // Quantity buttons
+        if (minusBtn && qtyInput) {
+            minusBtn.addEventListener('click', function() {
+                let val = parseInt(qtyInput.value) || 1;
+                if (val > 1) {
+                    qtyInput.value = val - 1;
+                }
+            });
+        }
+
+        if (plusBtn && qtyInput) {
+            plusBtn.addEventListener('click', function() {
+                let val = parseInt(qtyInput.value) || 1;
+                let max = parseInt(qtyInput.max) || 99;
+                if (val < max) {
+                    qtyInput.value = val + 1;
+                }
+            });
+        }
+
+        // Add to Cart AJAX
+        if (addToCartBtn && productId) {
+            addToCartBtn.addEventListener('click', function() {
+                if (addToCartBtn.disabled) return;
+
+                const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
+
+                addToCartBtn.disabled = true;
+                addToCartBtn.classList.add('loading');
+
+                // WooCommerce AJAX add to cart
+                const formData = new FormData();
+                formData.append('action', 'marsx_sticky_cart_add');
+                formData.append('product_id', productId);
+                formData.append('quantity', qty);
+
+                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        // ถ้า AJAX handler ไม่รองรับ ใช้วิธี redirect
+                        window.location.href = '?add-to-cart=' + productId + '&quantity=' + qty;
+                    } else {
+                        // Update cart fragments
+                        if (data.fragments) {
+                            jQuery.each(data.fragments, function(key, value) {
+                                jQuery(key).replaceWith(value);
+                            });
+                        }
+
+                        // Trigger WooCommerce event
+                        jQuery(document.body).trigger('added_to_cart', [data.fragments, data.cart_hash, jQuery(addToCartBtn)]);
+
+                        // Reset button
+                        addToCartBtn.disabled = false;
+                        addToCartBtn.classList.remove('loading');
+
+                        // Show success feedback
+                        const originalText = addToCartBtn.innerHTML;
+                        addToCartBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> <?php echo $is_english ? "Added!" : "เพิ่มแล้ว!"; ?>';
+                        setTimeout(() => {
+                            addToCartBtn.innerHTML = originalText;
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    // Fallback: redirect with add-to-cart parameter
+                    window.location.href = '?add-to-cart=' + productId + '&quantity=' + qty;
+                });
+            });
+        }
+    })();
+    </script>
     <?php
 
     return ob_get_clean();
 }
-add_shortcode('marsx_cart_icon', 'marsx_cart_icon_shortcode');
-
+add_shortcode('marsx_sticky_cart', 'marsx_sticky_cart_shortcode');
 
 /**
- * CSS Styles for Cart Icon
+ * AJAX handler for WooCommerce add to cart (Sticky Cart)
+ * Note: ใช้ action name ที่ต่างจาก woocommerce-custom.php
  */
-function marsx_cart_icon_styles() {
-    static $cart_styles_loaded = false;
-    if ($cart_styles_loaded) return;
-    $cart_styles_loaded = true;
-    ?>
-    <style>
-    /* MarsX Cart Icon Styles */
-    .marsx-cart-icon {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-        color: #333;
-        font-family: 'Noto Sans Thai', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-        transition: all 0.2s;
+function marsx_sticky_cart_ajax_add_to_cart() {
+    // Check if WooCommerce is active
+    if (!class_exists('WooCommerce') || !function_exists('WC')) {
+        wp_send_json(array('error' => true, 'message' => 'WooCommerce not active'));
+        wp_die();
     }
 
-    .marsx-cart-icon:hover {
-        color: #333;
+    $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
+    $quantity = isset($_POST['quantity']) && !empty($_POST['quantity']) ? wc_stock_amount(wp_unslash($_POST['quantity'])) : 1;
+    $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
+    $variation = array();
+
+    if (!$product_id) {
+        wp_send_json(array('error' => true, 'message' => 'Invalid product'));
+        wp_die();
     }
 
-    .marsx-cart-icon-wrapper {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        background: var(--e-global-color-primary);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        transition: all 0.2s;
-    }
+    $passed_validation = apply_filters('woocommerce_add_to_cart_validation', true, $product_id, $quantity);
+    $product_status = get_post_status($product_id);
 
-    .marsx-cart-icon:hover .marsx-cart-icon-wrapper {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
+    if ($passed_validation && 'publish' === $product_status && WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation)) {
+        do_action('woocommerce_ajax_added_to_cart', $product_id);
 
-    .marsx-cart-svg {
-        color: white;
-        transition: transform 0.2s;
-    }
-
-    .marsx-cart-icon:hover .marsx-cart-svg {
-        transform: scale(1.1);
-    }
-
-    .marsx-cart-count {
-        position: absolute;
-        top: -2px;
-        right: -2px;
-        background: white;
-        color: var(--e-global-color-primary);
-        font-size: 10px;
-        font-weight: 700;
-        min-width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 3px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
-    .marsx-cart-total {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .marsx-cart-icon:hover .marsx-cart-total {
-        color: var(--e-global-color-primary);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .marsx-cart-total {
-            display: none;
+        if ('yes' === get_option('woocommerce_cart_redirect_after_add')) {
+            wc_add_to_cart_message(array($product_id => $quantity), true);
         }
-    }
-    </style>
-    <?php
-}
 
-
-/**
- * AJAX Fragment สำหรับ update จำนวนตะกร้า
- * (ทำให้จำนวนอัพเดทอัตโนมัติเมื่อเพิ่มสินค้า)
- */
-function marsx_cart_count_fragments($fragments) {
-    $cart_count = WC()->cart->get_cart_contents_count();
-
-    // อัพเดท badge นับจำนวน
-    if ($cart_count > 0) {
-        $fragments['.marsx-cart-count'] = '<span class="marsx-cart-count">' . $cart_count . '</span>';
+        WC_AJAX::get_refreshed_fragments();
     } else {
-        $fragments['.marsx-cart-count'] = '';
+        $data = array(
+            'error' => true,
+            'product_url' => apply_filters('woocommerce_cart_redirect_after_error', get_permalink($product_id), $product_id),
+        );
+
+        wp_send_json($data);
     }
 
-    // อัพเดทยอดรวม
-    $fragments['.marsx-cart-total'] = '<span class="marsx-cart-total">' . WC()->cart->get_cart_total() . '</span>';
-
-    return $fragments;
+    wp_die();
 }
-add_filter('woocommerce_add_to_cart_fragments', 'marsx_cart_count_fragments');
+add_action('wp_ajax_marsx_sticky_cart_add', 'marsx_sticky_cart_ajax_add_to_cart');
+add_action('wp_ajax_nopriv_marsx_sticky_cart_add', 'marsx_sticky_cart_ajax_add_to_cart');

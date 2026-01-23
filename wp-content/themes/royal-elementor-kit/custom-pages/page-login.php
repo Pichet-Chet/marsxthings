@@ -42,7 +42,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
             $user = wp_signon($creds, is_ssl());
 
             if (is_wp_error($user)) {
-                $login_error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+                // ดึง error codes จาก WP_Error (รวมถึง Limit Login Attempts Reloaded)
+                $error_codes = $user->get_error_codes();
+                $all_messages = $user->get_error_messages();
+
+                // ตรวจสอบว่าเป็น lockout จาก Limit Login Attempts Reloaded หรือไม่
+                if (in_array('too_many_retries', $error_codes) || in_array('locked', $error_codes)) {
+                    $login_error = wp_strip_all_tags($user->get_error_message());
+                } else {
+                    // ข้อความ error หลัก
+                    if (in_array('invalid_username', $error_codes) || in_array('invalid_email', $error_codes)) {
+                        $login_error = 'ไม่พบบัญชีผู้ใช้นี้ในระบบ';
+                    } elseif (in_array('incorrect_password', $error_codes)) {
+                        $login_error = 'รหัสผ่านไม่ถูกต้อง';
+                    } else {
+                        $login_error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+                    }
+
+                    // ตรวจหาข้อความ remaining attempts จาก Limit Login Attempts Reloaded
+                    foreach ($all_messages as $msg) {
+                        $msg_lower = strtolower($msg);
+                        if (strpos($msg_lower, 'attempt') !== false || strpos($msg_lower, 'retries') !== false || strpos($msg_lower, 'remaining') !== false) {
+                            $login_error .= ' ' . wp_strip_all_tags($msg);
+                            break;
+                        }
+                    }
+                }
             } else {
                 wp_redirect(home_url('/my-account/'));
                 exit;
