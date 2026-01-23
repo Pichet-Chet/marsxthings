@@ -585,6 +585,19 @@ $checkout = WC()->checkout();
         text-decoration: underline;
     }
 
+    /* Terms Checkbox Error Style */
+    .marsx-order-review .woocommerce-terms-and-conditions-wrapper.marsx-has-error {
+        padding: 15px;
+        background-color: #fef2f2;
+        border: 2px solid #dc2626;
+        border-radius: 12px;
+        animation: marsx-shake 0.4s ease;
+    }
+
+    .marsx-order-review .woocommerce-terms-and-conditions-wrapper.marsx-has-error .woocommerce-form__label-for-checkbox {
+        color: #dc2626;
+    }
+
     /* Coupon */
     .marsx-checkout-form-section .woocommerce-form-coupon-toggle {
         margin-bottom: 20px;
@@ -1092,7 +1105,8 @@ $checkout = WC()->checkout();
         required: 'กรุณากรอกข้อมูลในช่องนี้',
         email: 'กรุณากรอกอีเมลให้ถูกต้อง',
         phone: 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง',
-        postcode: 'กรุณากรอกรหัสไปรษณีย์ให้ถูกต้อง'
+        postcode: 'กรุณากรอกรหัสไปรษณีย์ให้ถูกต้อง',
+        terms: 'กรุณายอมรับข้อตกลงและเงื่อนไขเพื่อดำเนินการต่อ'
     };
 
     // Required fields configuration
@@ -1204,6 +1218,17 @@ $checkout = WC()->checkout();
             }
         }
 
+        // Check terms and conditions checkbox
+        var $termsCheckbox = $('#terms');
+        if ($termsCheckbox.length && !$termsCheckbox.is(':checked')) {
+            var $termsWrapper = $termsCheckbox.closest('.woocommerce-terms-and-conditions-wrapper');
+            $termsWrapper.addClass('marsx-has-error');
+            if ($termsWrapper.find('.marsx-field-error').length === 0) {
+                $termsWrapper.append(createErrorElement(validationMessages.terms));
+            }
+            errors.push('terms');
+        }
+
         return errors;
     }
 
@@ -1216,6 +1241,8 @@ $checkout = WC()->checkout();
 
         if (firstErrorId === 'payment_method') {
             $firstError = $('#payment');
+        } else if (firstErrorId === 'terms') {
+            $firstError = $('#terms').closest('.woocommerce-terms-and-conditions-wrapper');
         } else {
             $firstError = $('#' + firstErrorId);
         }
@@ -1224,7 +1251,7 @@ $checkout = WC()->checkout();
             $('html, body').animate({
                 scrollTop: $firstError.offset().top - 150
             }, 500, function() {
-                if (firstErrorId !== 'payment_method') {
+                if (firstErrorId !== 'payment_method' && firstErrorId !== 'terms') {
                     $firstError.focus();
                 }
             });
@@ -1289,6 +1316,15 @@ $checkout = WC()->checkout();
             if ($row.hasClass('marsx-has-error')) {
                 $row.find('.marsx-field-error').remove();
                 $row.removeClass('marsx-has-error');
+            }
+        });
+
+        // Handle terms checkbox change - clear error when checked
+        $(document).on('change', '#terms', function() {
+            var $termsWrapper = $(this).closest('.woocommerce-terms-and-conditions-wrapper');
+            if ($(this).is(':checked')) {
+                $termsWrapper.removeClass('marsx-has-error');
+                $termsWrapper.find('.marsx-field-error').remove();
             }
         });
 
