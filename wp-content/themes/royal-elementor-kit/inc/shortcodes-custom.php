@@ -627,6 +627,15 @@ function marsx_user_menu_shortcode($atts) {
                     </svg>
                     <?php echo esc_html($text_orders); ?>
                 </a>
+                <a href="<?php echo $is_english ? home_url('/en/track-shipping/') : home_url('/track-shipping/'); ?>" class="marsx-um-dropdown-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                    </svg>
+                    <?php echo $is_english ? 'Track Shipping' : 'ติดตามพัสดุ'; ?>
+                </a>
                 <a href="<?php echo esc_url($account_url . '?tab=account-details'); ?>" class="marsx-um-dropdown-item">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>

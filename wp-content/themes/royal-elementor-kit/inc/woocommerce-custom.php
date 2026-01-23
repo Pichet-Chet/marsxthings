@@ -732,3 +732,21 @@ function marsx_add_to_cart_toast_script() {
     <?php
 }
 add_action('wp_footer', 'marsx_add_to_cart_toast_script', 99);
+
+
+/**
+ * ========================================
+ * Load Custom Single Product CSS
+ * ========================================
+ */
+function marsx_single_product_styles() {
+    if (is_product()) {
+        wp_enqueue_style(
+            'marsx-single-product',
+            get_stylesheet_directory_uri() . '/woocommerce/single-product-custom.css',
+            array(),
+            filemtime(get_stylesheet_directory() . '/woocommerce/single-product-custom.css')
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'marsx_single_product_styles');
