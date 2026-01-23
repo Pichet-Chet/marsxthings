@@ -11,6 +11,35 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Early template loading for custom pages (order-received, view-order)
+ * Uses template_redirect to load templates before WordPress 404 handling
+ */
+add_action('template_redirect', function() {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    $templates = array(
+        '/en/view-order' => 'page-view-order-en.php',
+        '/en/order-received' => 'page-thankyou-en.php',
+        '/view-order' => 'page-view-order.php',
+        '/order-received' => 'page-thankyou.php',
+    );
+
+    if (isset($templates[$uri_path])) {
+        $template_path = get_stylesheet_directory() . '/custom-pages/' . $templates[$uri_path];
+
+        if (file_exists($template_path)) {
+            global $wp_query;
+            $wp_query->is_404 = false;
+            status_header(200);
+            include $template_path;
+            exit;
+        }
+    }
+}, 1);
+
+/**
  * เปลี่ยน Currency Symbol จาก ฿ เป็น บาท (มีเว้นวรรคนำหน้า)
  */
 add_filter('woocommerce_currency_symbol', function($symbol, $currency) {
@@ -181,7 +210,30 @@ add_filter('woocommerce_get_view_order_url', function($url, $order) {
 }, 10, 2);
 
 /**
+ * Set query vars for custom template URLs to prevent 404
+ */
+add_action('parse_request', function($wp) {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    $custom_pages = array(
+        '/en/view-order',
+        '/en/order-received',
+        '/view-order',
+        '/order-received',
+    );
+
+    if (in_array($uri_path, $custom_pages)) {
+        // Trick WordPress into thinking this is a valid page
+        $wp->query_vars['pagename'] = 'custom-template';
+        $wp->query_vars['marsx_custom_page'] = $uri_path;
+    }
+}, 1);
+
+/**
  * Prevent 404 for custom template URLs
+ * Priority 1 to run before other filters
  */
 add_filter('pre_handle_404', function($preempt, $wp_query) {
     $request_uri = $_SERVER['REQUEST_URI'] ?? '';
@@ -200,11 +252,12 @@ add_filter('pre_handle_404', function($preempt, $wp_query) {
     }
 
     return $preempt;
-}, 10, 2);
+}, 1, 2);
 
 /**
  * Load custom templates for Thank You and View Order pages
  * ใช้ template_include filter เพื่อให้ WordPress และ Elementor load assets ได้ถูกต้อง
+ * Priority 9999 to ensure it runs last
  */
 add_filter('template_include', function($template) {
     $request_uri = $_SERVER['REQUEST_URI'] ?? '';
@@ -223,6 +276,10 @@ add_filter('template_include', function($template) {
             $template_path = get_stylesheet_directory() . '/custom-pages/' . $template_file;
 
             if (file_exists($template_path)) {
+                global $wp_query;
+                $wp_query->is_404 = false;
+                $wp_query->is_page = true;
+                $wp_query->is_singular = true;
                 status_header(200);
                 return $template_path;
             }
@@ -230,7 +287,7 @@ add_filter('template_include', function($template) {
     }
 
     return $template;
-}, 99);
+}, 9999);
 
 /**
  * =========================================
@@ -1359,6 +1416,319 @@ add_filter('authenticate', function($user, $username, $password) {
 
     return $user;
 }, 30, 3);
+
+/**
+ * =========================================
+ * Microsoft Teams Chat Notification
+ * =========================================
+ * ใช้ Resource Owner Password Credentials (ROPC) flow
+ * เพื่อให้สามารถส่ง Chat ในนามของ user ได้
+ *
+ * เพิ่มใน wp-config.php:
+ * define('MARSX_TEAMS_USERNAME', 'user@domain.com');
+ * define('MARSX_TEAMS_PASSWORD', 'password');
+ * define('MARSX_TEAMS_CHAT_ID_1TO1', 'chat-id');
+ * define('MARSX_TEAMS_CHAT_GROUP_ID', 'group-chat-id');
+ */
+
+/**
+ * Get Microsoft Graph Access Token using ROPC flow (for Teams Chat)
+ * Uses username/password to get delegated token
+ * @return string|WP_Error Access token or error
+ */
+function marsx_get_teams_access_token() {
+    // Check for cached token
+    $cached_token = get_transient('marsx_teams_access_token');
+    if ($cached_token) {
+        return $cached_token;
+    }
+
+    // Check required constants
+    if (!defined('MARSX_TEAMS_USERNAME') || !defined('MARSX_TEAMS_PASSWORD')) {
+        return new WP_Error('config_error', 'Teams username/password not configured');
+    }
+
+    $token_url = 'https://login.microsoftonline.com/' . MARSX_GRAPH_TENANT_ID . '/oauth2/v2.0/token';
+
+    $response = wp_remote_post($token_url, array(
+        'timeout' => 30,
+        'body' => array(
+            'client_id' => MARSX_GRAPH_CLIENT_ID,
+            'client_secret' => MARSX_GRAPH_CLIENT_SECRET,
+            'scope' => 'https://graph.microsoft.com/Chat.ReadWrite https://graph.microsoft.com/User.Read',
+            'grant_type' => 'password',
+            'username' => MARSX_TEAMS_USERNAME,
+            'password' => MARSX_TEAMS_PASSWORD,
+        ),
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('MarsX Teams Token Error: ' . $response->get_error_message());
+        return $response;
+    }
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (isset($body['access_token'])) {
+        // Cache token for 50 minutes (tokens expire in 60 minutes)
+        set_transient('marsx_teams_access_token', $body['access_token'], 50 * 60);
+        return $body['access_token'];
+    }
+
+    $error_msg = isset($body['error_description']) ? $body['error_description'] : 'Unknown error';
+    error_log('MarsX Teams Token Error: ' . $error_msg);
+    return new WP_Error('token_error', $error_msg);
+}
+
+/**
+ * Create or get existing 1:1 Chat with a user by email
+ * Similar to C# implementation using ChatType.OneOnOne
+ *
+ * @param string $target_email The email of user to chat with
+ * @return string|WP_Error Chat ID or error
+ */
+function marsx_create_or_get_1to1_chat($target_email) {
+    // Check if MARSX_TEAMS_USERNAME is defined
+    if (!defined('MARSX_TEAMS_USERNAME') || empty(MARSX_TEAMS_USERNAME)) {
+        return new WP_Error('config_error', 'MARSX_TEAMS_USERNAME not configured in wp-config.php');
+    }
+
+    // Get access token using ROPC flow
+    $access_token = marsx_get_teams_access_token();
+    if (is_wp_error($access_token)) {
+        return $access_token;
+    }
+
+    // The sender is MARSX_TEAMS_USERNAME (the authenticated user)
+    $sender_email = MARSX_TEAMS_USERNAME;
+
+    // Graph API endpoint for creating chats
+    $endpoint = "https://graph.microsoft.com/v1.0/chats";
+
+    // Build the payload - same structure as C# code
+    $payload = array(
+        'chatType' => 'oneOnOne',
+        'members' => array(
+            array(
+                '@odata.type' => '#microsoft.graph.aadUserConversationMember',
+                'roles' => array('owner'),
+                'user@odata.bind' => "https://graph.microsoft.com/v1.0/users('{$sender_email}')"
+            ),
+            array(
+                '@odata.type' => '#microsoft.graph.aadUserConversationMember',
+                'roles' => array('owner'),
+                'user@odata.bind' => "https://graph.microsoft.com/v1.0/users('{$target_email}')"
+            )
+        )
+    );
+
+    // Send the request
+    $response = wp_remote_post($endpoint, array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $access_token,
+            'Content-Type' => 'application/json'
+        ),
+        'body' => json_encode($payload),
+        'timeout' => 30
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('MarsX Teams: Failed to create chat - ' . $response->get_error_message());
+        return $response;
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = json_decode(wp_remote_retrieve_body($response), true);
+
+    // 201 = Created new chat, 200 = Returned existing chat
+    if ($response_code === 201 || $response_code === 200) {
+        if (isset($response_body['id'])) {
+            error_log('MarsX Teams: Got chat ID for ' . $target_email . ': ' . $response_body['id']);
+            return $response_body['id'];
+        }
+    }
+
+    $error_msg = isset($response_body['error']['message']) ? $response_body['error']['message'] : 'Unknown error';
+    error_log('MarsX Teams: Failed to create chat (' . $response_code . ') - ' . $error_msg);
+    return new WP_Error('teams_chat_error', $error_msg);
+}
+
+/**
+ * Send 1:1 message to a user by email (creates chat if needed)
+ * This is similar to the C# implementation
+ *
+ * @param string $target_email The email of user to send message to
+ * @param string $message The message content (HTML supported)
+ * @return array|WP_Error Response or error
+ */
+function marsx_send_teams_message_to_user($target_email, $message) {
+    // Create or get existing 1:1 chat
+    $chat_id = marsx_create_or_get_1to1_chat($target_email);
+    if (is_wp_error($chat_id)) {
+        return $chat_id;
+    }
+
+    // Send the message to this chat
+    return marsx_send_teams_chat_message($chat_id, $message);
+}
+
+/**
+ * Send message to Microsoft Teams Chat using Graph API
+ * Supports both 1:1 Chat and Group Chat
+ *
+ * @param string $chat_id The Chat ID (1:1 or Group)
+ * @param string $message The message content (HTML supported)
+ * @return array|WP_Error Response or error
+ */
+function marsx_send_teams_chat_message($chat_id, $message) {
+    // Get access token using ROPC flow
+    $access_token = marsx_get_teams_access_token();
+    if (is_wp_error($access_token)) {
+        error_log('MarsX Teams: Failed to get access token - ' . $access_token->get_error_message());
+        return $access_token;
+    }
+
+    // Graph API endpoint for sending chat messages
+    $endpoint = "https://graph.microsoft.com/v1.0/chats/{$chat_id}/messages";
+
+    // Build the message payload
+    $payload = array(
+        'body' => array(
+            'contentType' => 'html',
+            'content' => $message
+        )
+    );
+
+    // Send the request
+    $response = wp_remote_post($endpoint, array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $access_token,
+            'Content-Type' => 'application/json'
+        ),
+        'body' => json_encode($payload),
+        'timeout' => 30
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('MarsX Teams: Failed to send message - ' . $response->get_error_message());
+        return $response;
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if ($response_code !== 201) {
+        $error_msg = isset($response_body['error']['message']) ? $response_body['error']['message'] : 'Unknown error';
+        error_log('MarsX Teams: API error (' . $response_code . ') - ' . $error_msg);
+        return new WP_Error('teams_api_error', $error_msg);
+    }
+
+    return $response_body;
+}
+
+/**
+ * Format and send order notification to Teams Chat
+ * ส่งโดยใช้ Email (สร้าง 1:1 Chat อัตโนมัติ)
+ *
+ * @param int $order_id WooCommerce Order ID
+ * @return void
+ */
+function marsx_notify_order_to_teams($order_id) {
+    // Get the order
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        return;
+    }
+
+    // Prevent duplicate notifications
+    if ($order->get_meta('_marsx_teams_notified')) {
+        return;
+    }
+
+    // Get recipient emails from wp-config (comma-separated for multiple recipients)
+    $notify_emails = defined('MARSX_TEAMS_NOTIFY_EMAILS') ? MARSX_TEAMS_NOTIFY_EMAILS : '';
+
+    // If no emails configured, skip
+    if (empty($notify_emails)) {
+        error_log('MarsX Teams: No notify emails configured (MARSX_TEAMS_NOTIFY_EMAILS)');
+        return;
+    }
+
+    // Order details
+    $order_number = $order->get_order_number();
+    $order_date = $order->get_date_created()->date_i18n('d/m/Y H:i');
+    $order_total = $order->get_formatted_order_total();
+    $payment_method = $order->get_payment_method_title();
+
+    // Customer details
+    $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+    $customer_email = $order->get_billing_email();
+    $customer_phone = $order->get_billing_phone();
+
+    // Shipping address
+    $shipping_address = $order->get_formatted_shipping_address();
+    if (empty($shipping_address)) {
+        $shipping_address = $order->get_formatted_billing_address();
+    }
+    $shipping_address = str_replace('<br/>', ', ', $shipping_address);
+
+    // Order items
+    $items_html = '';
+    foreach ($order->get_items() as $item) {
+        $product_name = $item->get_name();
+        $quantity = $item->get_quantity();
+        $total = wc_price($item->get_total());
+        $items_html .= "<li>{$product_name} x {$quantity} - {$total}</li>";
+    }
+
+    // Build the message HTML
+    $message = "
+    <h2>🛒 คำสั่งซื้อใหม่ #{$order_number}</h2>
+    <hr>
+    <p><strong>📅 วันที่:</strong> {$order_date}</p>
+    <p><strong>👤 ลูกค้า:</strong> {$customer_name}</p>
+    <p><strong>📧 อีเมล:</strong> {$customer_email}</p>
+    <p><strong>📱 โทรศัพท์:</strong> {$customer_phone}</p>
+    <hr>
+    <p><strong>📦 สินค้า:</strong></p>
+    <ul>{$items_html}</ul>
+    <hr>
+    <p><strong>📍 ที่อยู่จัดส่ง:</strong><br>{$shipping_address}</p>
+    <p><strong>💳 ชำระเงินโดย:</strong> {$payment_method}</p>
+    <hr>
+    <h3>💰 ยอดรวม: {$order_total}</h3>
+    ";
+
+    // Parse emails (comma-separated)
+    $emails = array_map('trim', explode(',', $notify_emails));
+    $success_count = 0;
+
+    // Send to each recipient by email (creates 1:1 chat automatically)
+    foreach ($emails as $target_email) {
+        if (empty($target_email) || !is_email($target_email)) {
+            continue;
+        }
+
+        $result = marsx_send_teams_message_to_user($target_email, $message);
+        if (is_wp_error($result)) {
+            error_log('MarsX Teams: Failed to send to ' . $target_email . ' - ' . $result->get_error_message());
+        } else {
+            error_log('MarsX Teams: Order #' . $order_number . ' notification sent to ' . $target_email);
+            $success_count++;
+        }
+    }
+
+    // Mark as notified if at least one succeeded
+    if ($success_count > 0) {
+        $order->update_meta_data('_marsx_teams_notified', current_time('mysql'));
+        $order->save();
+    }
+}
+
+// Hook into WooCommerce order completion
+add_action('woocommerce_thankyou', 'marsx_notify_order_to_teams', 10, 1);
+add_action('woocommerce_order_status_processing', 'marsx_notify_order_to_teams', 10, 1);
+add_action('woocommerce_order_status_completed', 'marsx_notify_order_to_teams', 10, 1);
 
 /**
  * =========================================
