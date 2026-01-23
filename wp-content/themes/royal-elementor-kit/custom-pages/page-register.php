@@ -80,12 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_register'])) {
                 $user = new WP_User($user_id);
                 $user->set_role('customer');
 
-                // Auto login
-                wp_set_current_user($user_id);
-                wp_set_auth_cookie($user_id);
+                // Mark as registered via email (not Google)
+                update_user_meta($user_id, 'marsx_registered_via', 'email');
 
-                // Redirect to my account
-                wp_redirect(home_url('/my-account/'));
+                // Send verification email (NOT auto login)
+                marsx_send_verification_email($user_id, 'th');
+
+                // Redirect to login page with success message
+                wp_redirect(home_url('/login/?registered=1&email=' . urlencode($email)));
                 exit;
             }
         }

@@ -12,10 +12,51 @@ if (is_user_logged_in()) {
 
 // Handle login
 $login_error = '';
+$login_success = '';
+$show_resend_verification = false;
+$unverified_email = '';
 
 // Check for Google login error
 if (isset($_GET['google_error'])) {
     $login_error = sanitize_text_field($_GET['google_error']);
+}
+
+// Check for registration success message
+if (isset($_GET['registered']) && $_GET['registered'] === '1') {
+    $login_success = 'Registration successful! Please check your email to verify your account.';
+}
+
+// Check for verification success message
+if (isset($_GET['verified']) && $_GET['verified'] === '1') {
+    $login_success = 'Email verified successfully! You can now log in.';
+}
+
+// Check for resend verification success
+if (isset($_GET['resent']) && $_GET['resent'] === '1') {
+    $login_success = 'Verification email sent! Please check your inbox.';
+}
+
+// Handle resend verification request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_resend_verification'])) {
+    if (!isset($_POST['marsx_resend_nonce']) || !wp_verify_nonce($_POST['marsx_resend_nonce'], 'marsx_resend_action')) {
+        $login_error = 'Security check failed. Please try again.';
+    } else {
+        $email = sanitize_email($_POST['resend_email']);
+        $result = marsx_resend_verification_email($email, 'en');
+
+        if ($result['success']) {
+            wp_redirect(home_url('/en/login/?resent=1'));
+            exit;
+        } else {
+            if ($result['error'] === 'already_verified') {
+                $login_error = 'This email is already verified. You can log in now.';
+            } elseif ($result['error'] === 'user_not_found') {
+                $login_error = 'Email not found in our system.';
+            } else {
+                $login_error = 'Failed to send email. Please try again.';
+            }
+        }
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
@@ -25,10 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
     } else {
         // Verify reCAPTCHA v3
         $recaptcha_token = isset($_POST['recaptcha_token']) ? sanitize_text_field($_POST['recaptcha_token']) : '';
-        $recaptcha_result = marsx_verify_recaptcha_v3($recaptcha_token, 'login', 0.3); // ลด threshold เป็น 0.3
+        $recaptcha_result = marsx_verify_recaptcha_v3($recaptcha_token, 'login', 0.3);
 
         if (!$recaptcha_result['success']) {
-            // Debug: แสดง error ที่เกิดขึ้นจริง
             $debug_msg = $recaptcha_result['error'] ?? 'Unknown error';
             $login_error = 'Security verification failed: ' . $debug_msg;
             error_log('MarsX reCAPTCHA Error: ' . $debug_msg . ' | Token: ' . substr($recaptcha_token, 0, 20) . '...');
@@ -46,8 +86,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
                 $error_codes = $user->get_error_codes();
                 $all_messages = $user->get_error_messages();
 
+                // Check if email not verified
+                if (in_array('email_not_verified', $error_codes)) {
+                    $login_error = 'Please verify your email before logging in.';
+                    $show_resend_verification = true;
+                    $unverified_email = $user->get_error_message('email_not_verified');
+                }
                 // Check if locked out by Limit Login Attempts Reloaded
-                if (in_array('too_many_retries', $error_codes) || in_array('locked', $error_codes)) {
+                elseif (in_array('too_many_retries', $error_codes) || in_array('locked', $error_codes)) {
                     $login_error = wp_strip_all_tags($user->get_error_message());
                 } else {
                     // Base error message
@@ -414,6 +460,50 @@ $register_url = home_url('/en/register/');
             font-size: 0.9rem;
         }
 
+        .success-message {
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            color: #276749;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+
+        .resend-verification {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 25px;
+        }
+
+        .resend-verification p {
+            color: #92400e;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+        }
+
+        .resend-verification .btn-resend {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .resend-verification .btn-resend:hover {
+            background: #d97706;
+        }
+
         /* Hide WooCommerce cart and other floating widgets */
         .xoo-wsc-modal,
         .xoo-wsc-container,
@@ -620,8 +710,29 @@ $register_url = home_url('/en/register/');
             <div class="login-form-wrapper">
                 <h2>Welcome!</h2>
 
+                <?php if ($login_success) : ?>
+                    <div class="success-message"><?php echo esc_html($login_success); ?></div>
+                <?php endif; ?>
+
                 <?php if ($login_error) : ?>
                     <div class="error-message"><?php echo esc_html($login_error); ?></div>
+                <?php endif; ?>
+
+                <?php if ($show_resend_verification) : ?>
+                    <div class="resend-verification">
+                        <p>Didn't receive the verification email or link expired? Click below to resend.</p>
+                        <form method="post" action="">
+                            <?php wp_nonce_field('marsx_resend_action', 'marsx_resend_nonce'); ?>
+                            <input type="hidden" name="resend_email" value="<?php echo esc_attr($unverified_email); ?>">
+                            <button type="submit" name="marsx_resend_verification" class="btn-resend">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                Resend Verification Email
+                            </button>
+                        </form>
+                    </div>
                 <?php endif; ?>
 
                 <form method="post" action="" id="login-form">

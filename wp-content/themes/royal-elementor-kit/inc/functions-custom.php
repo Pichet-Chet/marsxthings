@@ -849,6 +849,519 @@ function marsx_is_beam_configured() {
 
 /**
  * =========================================
+ * Microsoft Graph Email Configuration
+ * =========================================
+ * - ใช้ Microsoft Graph API สำหรับส่งอีเมล
+ * - ต้อง config Azure AD App Registration
+ *
+ * เพิ่มใน wp-config.php:
+ * define('MARSX_GRAPH_TENANT_ID', 'your-tenant-id');
+ * define('MARSX_GRAPH_CLIENT_ID', 'your-client-id');
+ * define('MARSX_GRAPH_CLIENT_SECRET', 'your-client-secret');
+ * define('MARSX_GRAPH_SENDER_EMAIL', 'no-reply@yourdomain.com');
+ */
+
+/**
+ * Get Microsoft Graph Access Token
+ * Uses OAuth 2.0 Client Credentials flow
+ * @return string|false Access token or false on failure
+ */
+function marsx_get_graph_access_token() {
+    // Check for cached token
+    $cached_token = get_transient('marsx_graph_access_token');
+    if ($cached_token) {
+        return $cached_token;
+    }
+
+    $token_url = 'https://login.microsoftonline.com/' . MARSX_GRAPH_TENANT_ID . '/oauth2/v2.0/token';
+
+    $response = wp_remote_post($token_url, array(
+        'timeout' => 30,
+        'body' => array(
+            'client_id' => MARSX_GRAPH_CLIENT_ID,
+            'client_secret' => MARSX_GRAPH_CLIENT_SECRET,
+            'scope' => 'https://graph.microsoft.com/.default',
+            'grant_type' => 'client_credentials',
+        ),
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('MarsX Graph Token Error: ' . $response->get_error_message());
+        return false;
+    }
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (isset($body['access_token'])) {
+        // Cache token for 50 minutes (tokens expire in 60 minutes)
+        set_transient('marsx_graph_access_token', $body['access_token'], 50 * 60);
+        return $body['access_token'];
+    }
+
+    error_log('MarsX Graph Token Error: ' . print_r($body, true));
+    return false;
+}
+
+/**
+ * Send email via Microsoft Graph API
+ * @param string $to Recipient email
+ * @param string $subject Email subject
+ * @param string $html_body HTML email body
+ * @return bool Success or failure
+ */
+function marsx_send_email_graph($to, $subject, $html_body) {
+    $access_token = marsx_get_graph_access_token();
+    if (!$access_token) {
+        error_log('MarsX Graph: Failed to get access token');
+        return false;
+    }
+
+    $send_url = 'https://graph.microsoft.com/v1.0/users/' . MARSX_GRAPH_SENDER_EMAIL . '/sendMail';
+
+    $email_data = array(
+        'message' => array(
+            'subject' => $subject,
+            'body' => array(
+                'contentType' => 'HTML',
+                'content' => $html_body,
+            ),
+            'toRecipients' => array(
+                array(
+                    'emailAddress' => array(
+                        'address' => $to,
+                    ),
+                ),
+            ),
+            'from' => array(
+                'emailAddress' => array(
+                    'address' => MARSX_GRAPH_SENDER_EMAIL,
+                    'name' => 'MarsX Things',
+                ),
+            ),
+        ),
+        'saveToSentItems' => false,
+    );
+
+    $response = wp_remote_post($send_url, array(
+        'timeout' => 30,
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $access_token,
+            'Content-Type' => 'application/json',
+        ),
+        'body' => json_encode($email_data),
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('MarsX Graph Send Error: ' . $response->get_error_message());
+        return false;
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+
+    // 202 = Accepted (email queued for sending)
+    if ($response_code === 202) {
+        return true;
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    error_log('MarsX Graph Send Error (Code ' . $response_code . '): ' . $body);
+    return false;
+}
+
+/**
+ * =========================================
+ * Email Verification System
+ * =========================================
+ * - ระบบยืนยันอีเมลสำหรับการสมัครสมาชิก
+ * - Verification link หมดอายุใน 24 ชั่วโมง
+ * - Google Sign-in ไม่ต้องยืนยันอีเมล (Auto Sign-in)
+ */
+
+// Verification token expiry (24 hours)
+define('MARSX_EMAIL_VERIFICATION_EXPIRY', 24 * 60 * 60);
+
+/**
+ * Generate email verification token
+ * @param int $user_id
+ * @return string Verification token
+ */
+function marsx_generate_verification_token($user_id) {
+    $token = wp_generate_password(64, false, false);
+    $expiry = time() + MARSX_EMAIL_VERIFICATION_EXPIRY;
+
+    update_user_meta($user_id, 'marsx_email_verification_token', $token);
+    update_user_meta($user_id, 'marsx_email_verification_expiry', $expiry);
+    update_user_meta($user_id, 'marsx_email_verified', 'no');
+
+    return $token;
+}
+
+/**
+ * Check if user's email is verified
+ * @param int $user_id
+ * @return bool
+ */
+function marsx_is_email_verified($user_id) {
+    // Google users are auto-verified
+    $registered_via = get_user_meta($user_id, 'marsx_registered_via', true);
+    if ($registered_via === 'google') {
+        return true;
+    }
+
+    $verified = get_user_meta($user_id, 'marsx_email_verified', true);
+    return $verified === 'yes';
+}
+
+/**
+ * Get verification URL
+ * @param int $user_id
+ * @param string $token
+ * @param string $lang
+ * @return string
+ */
+function marsx_get_verification_url($user_id, $token, $lang = 'th') {
+    $base_url = $lang === 'en' ? home_url('/en/verify-email/') : home_url('/verify-email/');
+    return add_query_arg(array(
+        'user_id' => $user_id,
+        'token' => $token,
+    ), $base_url);
+}
+
+/**
+ * Send verification email
+ * @param int $user_id
+ * @param string $lang
+ * @return bool
+ */
+function marsx_send_verification_email($user_id, $lang = 'th') {
+    $user = get_user_by('ID', $user_id);
+    if (!$user) {
+        return false;
+    }
+
+    $token = marsx_generate_verification_token($user_id);
+    $verification_url = marsx_get_verification_url($user_id, $token, $lang);
+
+    $is_english = ($lang === 'en');
+
+    // Email subject
+    $subject = $is_english
+        ? 'Verify Your Email - ' . get_bloginfo('name')
+        : 'ยืนยันอีเมลของคุณ - ' . get_bloginfo('name');
+
+    // Logo URL
+    $logo_url = get_stylesheet_directory_uri() . '/assets/images/marsx-logo.png';
+    $site_url = home_url('/');
+
+    // Email content
+    $name = $user->first_name ?: $user->display_name;
+    $year = date('Y');
+
+    // Get email template
+    $message = marsx_get_email_template($is_english, $name, $verification_url, $logo_url, $site_url, $year);
+
+    // Send via Microsoft Graph
+    return marsx_send_email_graph($user->user_email, $subject, $message);
+}
+
+/**
+ * Get beautiful email template
+ * @param bool $is_english
+ * @param string $name
+ * @param string $verification_url
+ * @param string $logo_url
+ * @param string $site_url
+ * @param string $year
+ * @return string HTML email content
+ */
+function marsx_get_email_template($is_english, $name, $verification_url, $logo_url, $site_url, $year) {
+    // Text translations
+    $texts = $is_english ? array(
+        'greeting' => "Hello <strong>{$name}</strong>,",
+        'welcome' => "Welcome to MarsX Things!",
+        'message' => "Thank you for registering. Please verify your email address by clicking the button below to activate your account.",
+        'button' => "Verify Email Address",
+        'expire' => "This link will expire in <strong>24 hours</strong>.",
+        'ignore' => "If you didn't create an account, please ignore this email.",
+        'help' => "Need help? Contact us at",
+        'rights' => "All rights reserved.",
+        'follow' => "Follow us"
+    ) : array(
+        'greeting' => "สวัสดีคุณ <strong>{$name}</strong>,",
+        'welcome' => "ยินดีต้อนรับสู่ MarsX Things!",
+        'message' => "ขอบคุณที่สมัครสมาชิก กรุณายืนยันอีเมลของคุณโดยคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชี",
+        'button' => "ยืนยันอีเมล",
+        'expire' => "ลิงก์นี้จะหมดอายุภายใน <strong>24 ชั่วโมง</strong>",
+        'ignore' => "หากคุณไม่ได้สมัครสมาชิก กรุณาเพิกเฉยอีเมลนี้",
+        'help' => "ต้องการความช่วยเหลือ? ติดต่อเราที่",
+        'rights' => "สงวนลิขสิทธิ์",
+        'follow' => "ติดตามเรา"
+    );
+
+    return '<!DOCTYPE html>
+<html lang="' . ($is_english ? 'en' : 'th') . '">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: \'Segoe UI\', \'Noto Sans Thai\', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <!-- Main Container -->
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%;">
+
+                    <!-- Header with Logo -->
+                    <tr>
+                        <td align="center" style="padding: 30px 0;">
+                            <a href="' . esc_url($site_url) . '" style="text-decoration: none;">
+                                <img src="' . esc_url($logo_url) . '" alt="MarsX Things" width="180" style="max-width: 180px; height: auto; display: block;">
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Email Body -->
+                    <tr>
+                        <td>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%); border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);">
+
+                                <!-- Orange Top Border -->
+                                <tr>
+                                    <td style="background: linear-gradient(90deg, #f5a623 0%, #f39c12 50%, #e67e22 100%); height: 6px; border-radius: 20px 20px 0 0;"></td>
+                                </tr>
+
+                                <!-- Icon -->
+                                <tr>
+                                    <td align="center" style="padding: 40px 40px 20px;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td style="background: linear-gradient(135deg, #fff9f0 0%, #fff5e6 100%); border-radius: 50%; width: 80px; height: 80px; text-align: center; vertical-align: middle;">
+                                                    <span style="font-size: 36px;">&#9993;</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Welcome Text -->
+                                <tr>
+                                    <td align="center" style="padding: 0 40px 10px;">
+                                        <h1 style="margin: 0; font-size: 26px; font-weight: 700; color: #1a1a1a;">' . $texts['welcome'] . '</h1>
+                                    </td>
+                                </tr>
+
+                                <!-- Greeting -->
+                                <tr>
+                                    <td align="center" style="padding: 20px 40px 10px;">
+                                        <p style="margin: 0; font-size: 16px; color: #333; line-height: 1.6;">' . $texts['greeting'] . '</p>
+                                    </td>
+                                </tr>
+
+                                <!-- Message -->
+                                <tr>
+                                    <td align="center" style="padding: 10px 40px 30px;">
+                                        <p style="margin: 0; font-size: 15px; color: #555; line-height: 1.7;">' . $texts['message'] . '</p>
+                                    </td>
+                                </tr>
+
+                                <!-- Button -->
+                                <tr>
+                                    <td align="center" style="padding: 0 40px 30px;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td style="border-radius: 50px; background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%); box-shadow: 0 8px 25px rgba(243, 156, 18, 0.35);">
+                                                    <a href="' . esc_url($verification_url) . '" style="display: inline-block; padding: 16px 50px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 50px;">' . $texts['button'] . '</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Expire Note -->
+                                <tr>
+                                    <td align="center" style="padding: 0 40px 15px;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" style="background-color: #fff9f0; border-radius: 10px; border-left: 4px solid #f39c12;">
+                                            <tr>
+                                                <td style="padding: 12px 20px;">
+                                                    <p style="margin: 0; font-size: 13px; color: #92400e;">&#9203; ' . $texts['expire'] . '</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Ignore Note -->
+                                <tr>
+                                    <td align="center" style="padding: 10px 40px 40px;">
+                                        <p style="margin: 0; font-size: 13px; color: #888;">' . $texts['ignore'] . '</p>
+                                    </td>
+                                </tr>
+
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" style="padding: 30px 20px;">
+                            <p style="margin: 0 0 10px; font-size: 13px; color: #888;">' . $texts['help'] . ' <a href="mailto:support@marsxthings.com" style="color: #f39c12; text-decoration: none;">support@marsxthings.com</a></p>
+                            <p style="margin: 0; font-size: 12px; color: #aaa;">&copy; ' . $year . ' MarsX Things. ' . $texts['rights'] . '</p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>';
+}
+
+/**
+ * Verify email token
+ * @param int $user_id
+ * @param string $token
+ * @return array ['success' => bool, 'error' => string]
+ */
+function marsx_verify_email_token($user_id, $token) {
+    $result = array('success' => false, 'error' => '');
+
+    $user = get_user_by('ID', $user_id);
+    if (!$user) {
+        $result['error'] = 'invalid_user';
+        return $result;
+    }
+
+    // Check if already verified
+    if (marsx_is_email_verified($user_id)) {
+        $result['success'] = true;
+        $result['error'] = 'already_verified';
+        return $result;
+    }
+
+    // Get stored token and expiry
+    $stored_token = get_user_meta($user_id, 'marsx_email_verification_token', true);
+    $expiry = get_user_meta($user_id, 'marsx_email_verification_expiry', true);
+
+    // Check token
+    if (empty($stored_token) || $token !== $stored_token) {
+        $result['error'] = 'invalid_token';
+        return $result;
+    }
+
+    // Check expiry
+    if (time() > $expiry) {
+        $result['error'] = 'token_expired';
+        return $result;
+    }
+
+    // Mark as verified
+    update_user_meta($user_id, 'marsx_email_verified', 'yes');
+    delete_user_meta($user_id, 'marsx_email_verification_token');
+    delete_user_meta($user_id, 'marsx_email_verification_expiry');
+
+    $result['success'] = true;
+    return $result;
+}
+
+/**
+ * Resend verification email
+ * @param string $email
+ * @param string $lang
+ * @return array ['success' => bool, 'error' => string]
+ */
+function marsx_resend_verification_email($email, $lang = 'th') {
+    $result = array('success' => false, 'error' => '');
+
+    $user = get_user_by('email', $email);
+    if (!$user) {
+        $result['error'] = 'user_not_found';
+        return $result;
+    }
+
+    // Check if already verified
+    if (marsx_is_email_verified($user->ID)) {
+        $result['error'] = 'already_verified';
+        return $result;
+    }
+
+    // Send new verification email
+    $sent = marsx_send_verification_email($user->ID, $lang);
+
+    if ($sent) {
+        $result['success'] = true;
+    } else {
+        $result['error'] = 'email_failed';
+    }
+
+    return $result;
+}
+
+/**
+ * Add verify-email to custom pages list (prevent 404)
+ */
+add_filter('pre_handle_404', function($preempt, $wp_query) {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    if ($uri_path === '/verify-email' || $uri_path === '/en/verify-email') {
+        return true;
+    }
+
+    return $preempt;
+}, 5, 2);
+
+/**
+ * Load verify-email template
+ */
+add_filter('template_include', function($template) {
+    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uri_path = parse_url($request_uri, PHP_URL_PATH);
+    $uri_path = rtrim($uri_path, '/');
+
+    $templates = array(
+        '/en/verify-email' => 'page-verify-email-en.php',
+        '/verify-email' => 'page-verify-email.php',
+    );
+
+    foreach ($templates as $url_pattern => $template_file) {
+        if ($uri_path === $url_pattern) {
+            $template_path = get_stylesheet_directory() . '/custom-pages/' . $template_file;
+
+            if (file_exists($template_path)) {
+                status_header(200);
+                return $template_path;
+            }
+        }
+    }
+
+    return $template;
+}, 99);
+
+/**
+ * Block unverified users from logging in (except Google users)
+ */
+add_filter('authenticate', function($user, $username, $password) {
+    // Skip if already an error or no user
+    if (is_wp_error($user) || !$user) {
+        return $user;
+    }
+
+    // Check if email is verified
+    if (!marsx_is_email_verified($user->ID)) {
+        // Store the email for resend functionality
+        $error = new WP_Error();
+        $error->add('email_not_verified', $user->user_email);
+        return $error;
+    }
+
+    return $user;
+}, 30, 3);
+
+/**
+ * =========================================
  * WP-Admin Custom Styling
  * =========================================
  */

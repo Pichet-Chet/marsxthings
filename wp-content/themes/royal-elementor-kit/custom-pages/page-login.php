@@ -12,10 +12,51 @@ if (is_user_logged_in()) {
 
 // Handle login
 $login_error = '';
+$login_success = '';
+$show_resend_verification = false;
+$unverified_email = '';
 
 // Check for Google login error
 if (isset($_GET['google_error'])) {
     $login_error = sanitize_text_field($_GET['google_error']);
+}
+
+// Check for registration success message
+if (isset($_GET['registered']) && $_GET['registered'] === '1') {
+    $login_success = 'สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลของคุณเพื่อยืนยันบัญชี';
+}
+
+// Check for verification success message
+if (isset($_GET['verified']) && $_GET['verified'] === '1') {
+    $login_success = 'ยืนยันอีเมลสำเร็จ! คุณสามารถเข้าสู่ระบบได้แล้ว';
+}
+
+// Check for resend verification success
+if (isset($_GET['resent']) && $_GET['resent'] === '1') {
+    $login_success = 'ส่งลิงก์ยืนยันอีเมลใหม่แล้ว กรุณาตรวจสอบกล่องจดหมายของคุณ';
+}
+
+// Handle resend verification request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_resend_verification'])) {
+    if (!isset($_POST['marsx_resend_nonce']) || !wp_verify_nonce($_POST['marsx_resend_nonce'], 'marsx_resend_action')) {
+        $login_error = 'การตรวจสอบความปลอดภัยล้มเหลว กรุณาลองใหม่อีกครั้ง';
+    } else {
+        $email = sanitize_email($_POST['resend_email']);
+        $result = marsx_resend_verification_email($email, 'th');
+
+        if ($result['success']) {
+            wp_redirect(home_url('/login/?resent=1'));
+            exit;
+        } else {
+            if ($result['error'] === 'already_verified') {
+                $login_error = 'อีเมลนี้ได้รับการยืนยันแล้ว คุณสามารถเข้าสู่ระบบได้ทันที';
+            } elseif ($result['error'] === 'user_not_found') {
+                $login_error = 'ไม่พบอีเมลนี้ในระบบ';
+            } else {
+                $login_error = 'ไม่สามารถส่งอีเมลได้ กรุณาลองใหม่อีกครั้ง';
+            }
+        }
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
@@ -46,8 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marsx_login'])) {
                 $error_codes = $user->get_error_codes();
                 $all_messages = $user->get_error_messages();
 
+                // ตรวจสอบว่าเป็น email not verified หรือไม่
+                if (in_array('email_not_verified', $error_codes)) {
+                    $login_error = 'กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ';
+                    $show_resend_verification = true;
+                    $unverified_email = $user->get_error_message('email_not_verified');
+                }
                 // ตรวจสอบว่าเป็น lockout จาก Limit Login Attempts Reloaded หรือไม่
-                if (in_array('too_many_retries', $error_codes) || in_array('locked', $error_codes)) {
+                elseif (in_array('too_many_retries', $error_codes) || in_array('locked', $error_codes)) {
                     $login_error = wp_strip_all_tags($user->get_error_message());
                 } else {
                     // ข้อความ error หลัก
@@ -414,6 +461,50 @@ $register_url = home_url('/register/');
             font-size: 0.9rem;
         }
 
+        .success-message {
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            color: #276749;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+
+        .resend-verification {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 25px;
+        }
+
+        .resend-verification p {
+            color: #92400e;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+        }
+
+        .resend-verification .btn-resend {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .resend-verification .btn-resend:hover {
+            background: #d97706;
+        }
+
         /* Hide WooCommerce cart and other floating widgets */
         .xoo-wsc-modal,
         .xoo-wsc-container,
@@ -620,8 +711,29 @@ $register_url = home_url('/register/');
             <div class="login-form-wrapper">
                 <h2>ยินดีต้อนรับ!</h2>
 
+                <?php if ($login_success) : ?>
+                    <div class="success-message"><?php echo esc_html($login_success); ?></div>
+                <?php endif; ?>
+
                 <?php if ($login_error) : ?>
                     <div class="error-message"><?php echo esc_html($login_error); ?></div>
+                <?php endif; ?>
+
+                <?php if ($show_resend_verification) : ?>
+                    <div class="resend-verification">
+                        <p>หากยังไม่ได้รับอีเมลยืนยัน หรือลิงก์หมดอายุ คลิกปุ่มด้านล่างเพื่อส่งลิงก์ใหม่</p>
+                        <form method="post" action="">
+                            <?php wp_nonce_field('marsx_resend_action', 'marsx_resend_nonce'); ?>
+                            <input type="hidden" name="resend_email" value="<?php echo esc_attr($unverified_email); ?>">
+                            <button type="submit" name="marsx_resend_verification" class="btn-resend">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                ส่งลิงก์ยืนยันอีเมลใหม่
+                            </button>
+                        </form>
+                    </div>
                 <?php endif; ?>
 
                 <form method="post" action="" id="login-form">
